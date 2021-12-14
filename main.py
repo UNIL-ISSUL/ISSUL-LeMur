@@ -4,12 +4,20 @@ Created on Wed Oct 13 09:42:51 2021
 
 @author: jparent1
 """
+import os
+os.environ['KIVY_WINDOW'] = 'sdl2'
+os.environ['KIVY_GL_BACKEND'] = 'sdl2/gl'
+os.environ['KIVY_BCM_DISPMANX_ID'] = '2'
+print("KIVY_ENVIRON : ", os.environ['KIVY_WINDOW'])
+print("KIVY_GL_BACKEND : ", os.environ['KIVY_GL_BACKEND'])
+print("KIVY_BCM_DISPMANX_ID : ", os.environ['KIVY_BCM_DISPMANX_ID'])
 
+import kivy
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.logger import Logger
 from kivy.config import Config
-from kivy.core.window import Window
+#from kivy.core.window import Window
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.garden.led import Led
@@ -21,7 +29,6 @@ from time import strftime, localtime, gmtime
 
 #force keyboard to be shown
 #Config.set('kivy', 'keyboard_mode', 'systemanddock')
-
 
 class NumericInput(BoxLayout):
     name = StringProperty("value")
@@ -211,5 +218,5 @@ class LeMurApp(App):
     
 if __name__ == '__main__':
     #Set app in fullscreen
-    Window.maximize()
+    #Window.maximize()
     LeMurApp().run()
