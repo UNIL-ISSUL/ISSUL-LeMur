@@ -4,20 +4,12 @@ Created on Wed Oct 13 09:42:51 2021
 
 @author: jparent1
 """
-import os
-os.environ['KIVY_WINDOW'] = 'sdl2'
-os.environ['KIVY_GL_BACKEND'] = 'sdl2/gl'
-os.environ['KIVY_BCM_DISPMANX_ID'] = '2'
-print("KIVY_ENVIRON : ", os.environ['KIVY_WINDOW'])
-print("KIVY_GL_BACKEND : ", os.environ['KIVY_GL_BACKEND'])
-print("KIVY_BCM_DISPMANX_ID : ", os.environ['KIVY_BCM_DISPMANX_ID'])
-
 import kivy
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.logger import Logger
 from kivy.config import Config
-#from kivy.core.window import Window
+from kivy.core.window import Window
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.garden.led import Led
@@ -88,27 +80,37 @@ class StatusDisplay(BoxLayout) :
             instance.ids.led.state = 'off'
 
 class LeMurApp(App):
-    belt_speed = NumericProperty(5)
+    belt_speed = NumericProperty(2)
+    belt_speed_out = NumericProperty(0)
     tilt = NumericProperty(0)
+    tilt_out = NumericProperty(0)
     vertical_speed = NumericProperty()
     elapsed_time = NumericProperty(0)
     elapsed_distance = NumericProperty(0)
     elapsed_elevation = NumericProperty(0)
 
+    revpi = None
     start_time = 0.0
     delta_update_s = 0.5
     running = False
-        
+    
+    def __init__(self, revpi, **kwargs):
+        super().__init__(**kwargs)
+        self.revpi = revpi
+        self.tilt = float(revpi.tilt_current)
+        self.tilt_out = float(revpi.tilt_current)
+
     def build(self):
         Clock.schedule_interval(self.update_running,self.delta_update_s)
-        if revpi.is_raspberry_pi() : 
-            self.le_mur = revpi.revPI()
+        
 
     def move_lift(self) :
-        if revpi.is_raspberry_pi() : 
-            self.le_mur.set_target(self.tilt)
+        self.revpi.set_target(self.tilt)
     
     def update_running(self,_) :
+        #update revpi variables
+        self.tilt_out = float(self.revpi.tilt_current)
+        self.belt_speed_out = float(self.revpi.rpi.io.belt_out_frequency.value)
         if self.running : 
             self.elapsed_time += self.delta_update_s
             self.elapsed_distance += (self.belt_speed * 1000 / 3600) * self.delta_update_s
@@ -119,9 +121,11 @@ class LeMurApp(App):
         self.elapsed_time = 0
         self.elapsed_distance = 0
         self.elapsed_elevation = 0
+        self.revpi.rpi.io.belt_start.value=1
     
     def stop(self) :
         self.running = False
+        self.revpi.rpi.io.belt_start.value=0
     
 
     def update_parameters(self,instance) :
@@ -217,6 +221,9 @@ class LeMurApp(App):
         
     
 if __name__ == '__main__':
-    #Set app in fullscreen
-    #Window.maximize()
-    LeMurApp().run()
+    if revpi.is_raspberry_pi() : 
+        lemur = revpi.revPI()
+        lemur.start_cycle()
+    else :
+        revpi = None
+    LeMurApp(lemur).run()
