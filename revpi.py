@@ -7,12 +7,25 @@ import revpimodio2
 import numpy as np
 import math
 from threading import Thread
+from pathlib import Path
+#READ CONFIGURATION FILE
+import yaml
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
+def read_yaml(file_path):
+    with open(file_path, "r") as f:
+        return yaml.safe_load(f)
+
+#config dictionary
+file = Path(__file__)
+config = read_yaml(file.parent/'settings.yaml')
+
+#PARAMETERS FOR LIFT DISPLACEMENT
 buffer_size = 1           #nombre de valeur d'inclinaison moyennés
 angular_resolution = 0.1    #precision du positionement angulaire
-L = 2400                    #longueur du tapis en mm
-lift_frequency = 50         #lift_frequency
-lift_acceleration_s = 6.34     #time to accelerate from stop to 50Hz
 
 class revPI() :
     tilt_mv = np.empty(buffer_size,np.double)
@@ -28,19 +41,25 @@ class revPI() :
         #self.rpi.cycletime = 10
         #read current angle
         self.tilt_current = self.tilt_mv2deg(rpi.io.tilt_mv.value)
-        #set lift frequency to 50Hz (5V)
-        rpi.io.lift_speed_mv.value = 5000
+        #set lift frequency to config value
+        rpi.io.lift_speed_mv.value = config['LIFT_FREQ_HZ']*config['LIFT_HZ2mV'] #mV
         rpi.io.lift_up.value = False
         rpi.io.lift_down.value = False
+        #set event to create latch function on belt-start and belt_stop
+        rpi.io.belt_start.reg_timerevent(self.latch_output, 100,edge=revpimodio2.RISING)    #start is trigger to 0 after 100ms
+        rpi.io.belt_stop.reg_timerevent(self.latch_output, 100,edge=revpimodio2.FALLING)    #stop is trigger to 1 after 100ms
         self.rpi = rpi
+    
+    def latch_output(self,io_name,io_value) :
+        #invert io value
+        self.rpi.io[io_name].value = not io_value
 
     def start_cycle(self) :
         #start cycleloop, read_inclinaison will be call at every 10ms
         #https://revolutionpi.de/forum/viewtopic.php?t=2976
         #Change ADC rate in pictory ADC_DataRate (160Hz, 320Hz, 640Hz Max)
-        self.thread=Thread(target=self.rpi.cycleloop,args=[self.loop,10,True],daemon=True)
+        self.thread=Thread(target=self.rpi.cycleloop,args=[self.loop,config['CYCLETIME_MS'],True],daemon=True)
         self.thread.start()
-        #self.rpi.cycleloop(self.loop, cycletime=10, blocking=False)
     
     def loop(self, ct) :
         #self.read_inclinaison(ct)
@@ -52,7 +71,19 @@ class revPI() :
                 self.lift(ct)
 
     def tilt_mv2deg(self,mv) :
-        return mv*-0.071732393+268.9148431
+        return mv*config['CAL_TILT_A']+config['CAL_TILT_B']
+
+    def set_belt_speed(self,Vkmh) :
+        Vms = Vkmh / 3.6 
+        F = Vms * 50 * 60 * config['Z_BELT'] / (1450 * 2*np.pi * config['Z_MOTOR'] * config['RADIUS_CYL_MM']*1e-3)
+        #int is sent to frequency inverter with 0.01 precision
+        self.rpi.io.belt_frequency.value = int(F*100)
+    
+    def read_belt_speed(self) :
+         f = self.rpi.io.belt_current_frequency.value
+         f  /= 100  #int is received from controller with 0.01 precision
+         Vms = f * 1450 * 2*np.pi * config['Z_MOTOR'] * config['RADIUS_CYL_MM']*1e-3 / (50 * 60 * config['Z_BELT'])
+         return Vms*3.6
 
     def read_inclinaison(self,ct) :
         #read value from sensor
@@ -100,13 +131,13 @@ class revPI() :
         target = math.radians(target)
         current = math.radians(self.tilt_current)
         #Compute distance to travel on  screw
-        delta = L * (math.sin(target)-math.sin(current))
+        delta = config['BELT_LENGTH_MM'] * (math.sin(target)-math.sin(current))
         #Compute lift vertical acceleration
         #moteur speed 1400 tr/min @ 50HZ
         #screw step 2.5 mm/tr NSE10-SN-KGT
-        acc_mm_s2 = 1400.0 / 60 * 2.5 / lift_acceleration_s
+        acc_mm_s2 = 1400.0 / 60 * 2.5 / config['LIFT_ACC_S']
         #distance travel during acc -> primitive de la vistesse du type f(t)=a.t -> F(t) = a.t^2/2
-        dst_acc = acc_mm_s2 * lift_acceleration_s**2 / 2
+        dst_acc = acc_mm_s2 * config['LIFT_ACC_S']**2 / 2
         #Check if Max speed is reach during displacement
         if abs(delta/2) < dst_acc :
             #max speed is not reach
@@ -115,7 +146,7 @@ class revPI() :
         #distance to travel before stopping move command
         #dst_move = delta-math.copysign(dst_acc,delta)
         #target_corrected = math.asin(dst_move/L+math.sin(current))
-        target_corrected = math.asin(math.sin(target)-math.copysign(dst_acc/L,delta))
+        target_corrected = math.asin(math.sin(target)-math.copysign(dst_acc/config['BELT_LENGTH_MM'],delta))
         self.tilt_stop = math.degrees(target_corrected)
         self.tilt_target = math.degrees(target)
         self.move_up = 1 if target > current else 0

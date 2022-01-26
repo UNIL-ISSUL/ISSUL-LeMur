@@ -17,7 +17,7 @@ from kivy.properties import StringProperty, NumericProperty, BooleanProperty, Ob
 import revpi
 import math
 import time
-from time import strftime, localtime, gmtime
+from time import strftime, localtime, gmtime, sleep
 
 #force keyboard to be shown
 #Config.set('kivy', 'keyboard_mode', 'systemanddock')
@@ -91,7 +91,7 @@ class LeMurApp(App):
 
     revpi = None
     start_time = 0.0
-    delta_update_s = 0.5
+    delta_update_s = 0.1
     running = False
     
     def __init__(self, revpi, **kwargs):
@@ -99,10 +99,12 @@ class LeMurApp(App):
         self.revpi = revpi
         self.tilt = float(revpi.tilt_current)
         self.tilt_out = float(revpi.tilt_current)
+        self.revpi.rpi.io.belt_stop.value=1
+        self.revpi.rpi.io.belt_start.value=0
+        self.revpi.rpi.io.belt_dir.value=1
 
     def build(self):
         Clock.schedule_interval(self.update_running,self.delta_update_s)
-        
 
     def move_lift(self) :
         self.revpi.set_target(self.tilt)
@@ -110,7 +112,9 @@ class LeMurApp(App):
     def update_running(self,_) :
         #update revpi variables
         self.tilt_out = float(self.revpi.tilt_current)
-        self.belt_speed_out = float(self.revpi.rpi.io.belt_out_frequency.value)
+        self.belt_speed_out = self.revpi.read_belt_speed()
+        self.revpi.set_belt_speed(self.belt_speed)
+
         if self.running : 
             self.elapsed_time += self.delta_update_s
             self.elapsed_distance += (self.belt_speed * 1000 / 3600) * self.delta_update_s
@@ -122,11 +126,14 @@ class LeMurApp(App):
         self.elapsed_distance = 0
         self.elapsed_elevation = 0
         self.revpi.rpi.io.belt_start.value=1
+        sleep(0.1)
+        self.revpi.rpi.io.belt_start.value=0
     
     def stop(self) :
         self.running = False
-        self.revpi.rpi.io.belt_start.value=0
-    
+        self.revpi.rpi.io.belt_stop.value=0
+        sleep(0.1)
+        self.revpi.rpi.io.belt_stop.value=1
 
     def update_parameters(self,instance) :
         #get locked id to compute parameters
