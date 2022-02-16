@@ -34,6 +34,9 @@ class revPI() :
     tilt_stop = None
     move_lift = False
     cycle_thread = None
+    ramp = False
+    lookup_lift_speed = None
+    lookup_lift_angle = None
 
     def __init__(self) -> None:
         #define RevPiModIO instance
@@ -207,6 +210,20 @@ class revPI() :
         else :
             #stop lift motion
             self.stop_lift()
+    
+    def set_ramp(self,angular_speed_deg_min,start_angle_deg,stop_angle_deg) :
+        angular_speed_deg_s = angular_speed_deg_min / 60
+        duration_s = int((stop_angle_deg-start_angle_deg) / angular_speed_deg_s)
+        step_s = 1
+        #time vector for ramp experiment, 2 steps are added to stop because arange exclude stop value and to add one value prior to differatiation
+        time = np.arange(start=0,stop=duration_s+step_s,step=step_s)
+        lift_angle = time*angular_speed_deg_s + start_angle_deg
+        lift_height = np.zeros_like(time)
+        for i, angle in enumerate(lift_angle) :
+            lift_height[i] = self.tilt_to_linear(math.radians(angle))
+        self.lookup_lift_speed = np.diff(lift_height,n=1)
+        self.lookup_lift_angle = np(lift_angle,-1)
+        print(self.lookup_lift_angle,self.lookup_lift_speed)
 
 
 if __name__ == '__main__':

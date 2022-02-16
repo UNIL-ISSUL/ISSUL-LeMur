@@ -79,6 +79,12 @@ class StatusDisplay(BoxLayout) :
         else :
             instance.ids.led.state = 'off'
 
+class Ramp(BoxLayout) :
+    duration_min = NumericProperty(0)
+
+    def compute_duration(self, vitesse_angulaire,start_angle,stop_angle) : 
+        self.duration_min = (stop_angle-start_angle) / vitesse_angulaire
+
 class LeMurApp(App):
     belt_speed = NumericProperty(2)
     belt_speed_out = NumericProperty(0)
@@ -107,26 +113,33 @@ class LeMurApp(App):
     def build(self):
         Clock.schedule_interval(self.update_running,self.delta_update_s)
         Clock.schedule_interval(self.update_values,0.1)
-        self.tilt = float(self.revpi.tilt_current)
-        self.tilt_out = float(self.revpi.tilt_current)
+        if self.revpi :
+            self.tilt = float(self.revpi.tilt_current)
+            self.tilt_out = float(self.revpi.tilt_current)
 
     def move_lift(self) :
-        self.revpi.set_target(self.tilt)
+        if self.revpi :
+            self.revpi.set_target(self.tilt)
+    
+    def start_ramp(self,angular_speed,start_angle,stop_angle) :
+        self.revpi.set_ramp(angular_speed,start_angle,stop_angle)
     
     def update_values(self,_) :
-        #safety
-        self.safety_right = self.revpi.rpi.io.secu_right.value
-        self.safety_left = self.revpi.rpi.io.secu_left.value
-        self.safety_front = self.revpi.rpi.io.secu_front.value
-        self.safety_back = self.revpi.rpi.io.secu_back.value
-        self.safety_emergency = self.revpi.rpi.io.secu_emergency.value
-        #real time value
-        self.tilt_out = float(self.revpi.tilt_current)
-        self.belt_speed_out = self.revpi.read_belt_speed()
+        if self.revpi :
+            #safety
+            self.safety_right = self.revpi.rpi.io.secu_right.value
+            self.safety_left = self.revpi.rpi.io.secu_left.value
+            self.safety_front = self.revpi.rpi.io.secu_front.value
+            self.safety_back = self.revpi.rpi.io.secu_back.value
+            self.safety_emergency = self.revpi.rpi.io.secu_emergency.value
+            #real time value
+            self.tilt_out = float(self.revpi.tilt_current)
+            self.belt_speed_out = self.revpi.read_belt_speed()
     
     def update_running(self,_) :
-        #update revpi variables
-        self.revpi.set_belt_speed(self.belt_speed)
+        if self.revpi :
+            #update revpi variables
+            self.revpi.set_belt_speed(self.belt_speed)
 
         if self.running : 
             self.elapsed_time += self.delta_update_s
@@ -138,15 +151,13 @@ class LeMurApp(App):
         self.elapsed_time = 0
         self.elapsed_distance = 0
         self.elapsed_elevation = 0
-        self.revpi.rpi.io.belt_start.value=1
-        sleep(0.1)
-        self.revpi.rpi.io.belt_start.value=0
+        if self.revpi :
+            self.revpi.rpi.io.belt_start.value=1
     
     def stop(self) :
         self.running = False
-        self.revpi.rpi.io.belt_stop.value=0
-        sleep(0.1)
-        self.revpi.rpi.io.belt_stop.value=1
+        if self.revpi :
+            self.revpi.rpi.io.belt_stop.value=0
 
     def update_parameters(self,instance) :
         #get locked id to compute parameters
@@ -245,5 +256,5 @@ if __name__ == '__main__':
         lemur = revpi.revPI()
         lemur.start_cycle()
     else :
-        revpi = None
+        lemur = None
     LeMurApp(lemur).run()

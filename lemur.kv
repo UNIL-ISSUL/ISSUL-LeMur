@@ -128,6 +128,61 @@
     StatusDisplay :
         name : 'Arret urgence'
         active : app.safety_emergency
+<Ramp@BoxLayout> :
+    id : ramp
+    orientation : 'vertical'
+    BoxLayout : 
+        orientation : 'horizontal'
+        Switch :
+            id : switch
+            size_hint_x : 0.1
+            active : False
+        Label :
+            text : "Mode Rampe"
+            font_size : 24
+    BoxLayout : 
+        disabled : not switch.active
+        orientation : 'horizontal'
+        NumericDisplay :
+            id : start_angle
+            name : "Angle début"
+            unit : "°"
+            value : app.tilt_out
+        NumericDisplay :
+            id : stop_angle
+            name : "Angle fin"
+            unit : "°"
+            value : app.tilt
+    
+    BoxLayout :
+        disabled : not switch.active
+        orientation : 'horizontal'
+        NumericDisplay :
+            id : angular_speed
+            name : "Vitesse angulaire"
+            unit : "°/min"
+            value : slider.value
+
+        Slider :
+            id : slider
+            min : 1
+            step : 1
+            max : 10
+            on_value : root.compute_duration(self.value,start_angle.value,stop_angle.value)
+    
+    BoxLayout :
+        disabled : not switch.active
+        orientation : 'horizontal'
+        padding : 20
+        NumericDisplay :
+            name : "Durée"
+            unit : "min"
+            value : root.duration_min
+        
+        ToggleButton :
+            text : "start"
+            on_press : app.start_ramp(start_angle.value,stop_angle.value,angular_speed.value)
+
 
 GridLayout :
     cols :3
@@ -181,8 +236,7 @@ GridLayout :
     #        group : 'mode'
     #        on_press : app.mode_changed(self)
 
-    Label :
-        text :'4'
+    Ramp :
     
     Controller :
 
