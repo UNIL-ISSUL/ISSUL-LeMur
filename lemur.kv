@@ -115,16 +115,19 @@
     spacing : 10
     StatusDisplay :
         name : 'Sécurité gauche'
+        active : app.safety_left
     StatusDisplay :
         name : 'Sécurité droit'
+        active : app.safety_right
     StatusDisplay :
         name : 'Sécurité avant'
+        active : app.safety_front
     StatusDisplay :
         name : 'Sécurité arrière'
-        active : True
+        active : app.safety_back
     StatusDisplay :
         name : 'Arret urgence'
-        active : False
+        active : app.safety_emergency
 
 GridLayout :
     cols :3
@@ -138,7 +141,7 @@ GridLayout :
         name : 'Inclinaison'
         unit : '°'
         min_value : 0
-        max_value : 90
+        max_value : 85
     
     NumericInput :
         id : belt_speed

@@ -88,31 +88,44 @@ class LeMurApp(App):
     elapsed_time = NumericProperty(0)
     elapsed_distance = NumericProperty(0)
     elapsed_elevation = NumericProperty(0)
+    safety_left = BooleanProperty(False)
+    safety_right = BooleanProperty(False,rebind=True)
+    safety_front = BooleanProperty(False)
+    safety_back = BooleanProperty(False)
+    safety_emergency = BooleanProperty(False)
 
     revpi = None
     start_time = 0.0
     delta_update_s = 0.1
     running = False
     
+    #overcharge init to define rpi instance
     def __init__(self, revpi, **kwargs):
-        super().__init__(**kwargs)
+        super(LeMurApp,self).__init__(**kwargs)
         self.revpi = revpi
-        self.tilt = float(revpi.tilt_current)
-        self.tilt_out = float(revpi.tilt_current)
-        self.revpi.rpi.io.belt_stop.value=1
-        self.revpi.rpi.io.belt_start.value=0
-        self.revpi.rpi.io.belt_dir.value=1
 
     def build(self):
         Clock.schedule_interval(self.update_running,self.delta_update_s)
+        Clock.schedule_interval(self.update_values,0.1)
+        self.tilt = float(self.revpi.tilt_current)
+        self.tilt_out = float(self.revpi.tilt_current)
 
     def move_lift(self) :
         self.revpi.set_target(self.tilt)
     
-    def update_running(self,_) :
-        #update revpi variables
+    def update_values(self,_) :
+        #safety
+        self.safety_right = self.revpi.rpi.io.secu_right.value
+        self.safety_left = self.revpi.rpi.io.secu_left.value
+        self.safety_front = self.revpi.rpi.io.secu_front.value
+        self.safety_back = self.revpi.rpi.io.secu_back.value
+        self.safety_emergency = self.revpi.rpi.io.secu_emergency.value
+        #real time value
         self.tilt_out = float(self.revpi.tilt_current)
         self.belt_speed_out = self.revpi.read_belt_speed()
+    
+    def update_running(self,_) :
+        #update revpi variables
         self.revpi.set_belt_speed(self.belt_speed)
 
         if self.running : 
