@@ -128,7 +128,6 @@
     StatusDisplay :
         name : 'Arret urgence'
         active : app.safety_emergency
-
 <Ramp> :
     id : ramp
     orientation : 'vertical'
@@ -141,49 +140,6 @@
         Label :
             text : "Mode Rampe"
             font_size : 24
-    BoxLayout : 
-        disabled : not switch.active
-        orientation : 'horizontal'
-        NumericDisplay :
-            id : start_angle
-            name : "Angle début"
-            unit : "°"
-            value : app.tilt_out
-        NumericDisplay :
-            id : stop_angle
-            name : "Angle fin"
-            unit : "°"
-            value : app.tilt
-    
-    BoxLayout :
-        disabled : not switch.active
-        orientation : 'horizontal'
-        NumericDisplay :
-            id : angular_speed
-            name : "Vitesse angulaire"
-            unit : "°/min"
-            value : slider.value
-
-        Slider :
-            id : slider
-            min : 10
-            step : 1
-            max : 20
-            value : 10
-            on_value : root.compute_duration(self.value,start_angle.value,stop_angle.value)
-    
-    BoxLayout :
-        disabled : not switch.active
-        orientation : 'horizontal'
-        padding : 20
-        NumericDisplay :
-            name : "Durée"
-            unit : "min"
-            value : root.duration_min
-        
-        ToggleButton :
-            text : "start"
-            on_press : app.start_ramp(self.state,start_angle.value,stop_angle.value,angular_speed.value)
 
 GridLayout :
     cols :3
@@ -219,7 +175,25 @@ GridLayout :
         max_value : 6000
         increment_list : [10, 100, 500]
 
-    Ramp :
+    #BoxLayout :
+    #    orientation: 'vertical'
+    #    Label : 
+    #        text: 'MODE'
+    #    ToggleButton :
+    #        text : 'Manuel'
+    #        group : 'mode'
+    #        state : 'down'
+    #        on_press : app.mode_changed(self)
+    #    ToggleButton :
+    #        text : 'Rampe'
+    #        group : 'mode'
+    #        on_press : app.mode_changed(self)
+    #    ToggleButton :
+    #        text : 'Protocole'
+    #        group : 'mode'
+    #        on_press : app.mode_changed(self)
+
+    Slider :
 
     Controller :
 

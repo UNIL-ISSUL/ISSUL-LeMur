@@ -1,7 +1,7 @@
 #CONFIGURATION FILE TO CONFIGURE LE_MUR
 
 #REVOLUTION PI 
-CYCLETIME_MS : 20       #cycle time in ms
+CYCLETIME_MS : 50       #cycle time in ms
 
 #MECAHNICAL CHARATERISTICS
 BELT_LENGTH_MM : 2620   # distance between wheel and pivot
@@ -19,5 +19,5 @@ LIFT_MM_TR : 2.5        # pas de la vis (10mm) avec ecrou d'un ration 1/4
 LIFT_TR_MIN : 1400      # vitesse nominale du moteur en tr/min 
 
 #CALIBRATION FACTOR TO CONVERT TILT OUTPUT in mV to DEGREES
-CAL_TILT_A : -0.071732393 # Slope
-CAL_TILT_B : 268.9148431  ## Offset
+CAL_TILT_A : 0.019190669 # Slope
+CAL_TILT_B : -2.902368371 # Offset

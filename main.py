@@ -116,13 +116,20 @@ class LeMurApp(App):
         if self.revpi :
             self.tilt = float(self.revpi.tilt_current)
             self.tilt_out = float(self.revpi.tilt_current)
+    
+    def on_stop(self):
+        print('bye bye')
+        self.rpi.stop_all()
 
     def move_lift(self) :
         if self.revpi :
             self.revpi.set_target(self.tilt)
     
-    def start_ramp(self,angular_speed,start_angle,stop_angle) :
-        self.revpi.set_ramp(angular_speed,start_angle,stop_angle)
+    def start_ramp(self,state,angular_speed,start_angle,stop_angle) :
+        if state :
+            self.revpi.set_ramp(angular_speed,start_angle,stop_angle)
+        else :
+            self.revpi.stop_lift(msg="ramp stopped")
     
     def update_values(self,_) :
         if self.revpi :
