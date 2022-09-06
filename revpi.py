@@ -85,6 +85,7 @@ class revPI() :
     
     def stop_lift(self,msg="") :
         print('STOP lift','reason :',msg)
+        self.rpi.io.lift_speed_mv.value = int(0)
         self.rpi.io.lift_up.value = False
         self.rpi.io.lift_down.value = False
         self.move_lift = False
@@ -302,7 +303,7 @@ if __name__ == '__main__':
     lemur = revPI()
     lemur.start_cycle()
     lemur.pid.tunings = (0.5, 0, 0)
-    lemur.set_lift_height(850)
+    lemur.set_lift_height(800)
     target = []
     height = []
     while(1) :
@@ -311,6 +312,7 @@ if __name__ == '__main__':
         print("error :"+str(lemur.height_target-lemur.height))
         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
             break
+    lemur.rpi.exit()
     lemur.stop_lift("exit")
     #import matplotlib.pyplot as plt
     #plt.plot(height)
