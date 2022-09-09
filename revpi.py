@@ -41,6 +41,7 @@ class revPI() :
     cycle_thread = None
     ramp = False
     f_lift_speed = None
+    pid_control = True
 
     def __init__(self) -> None:
         #define RevPiModIO instance
@@ -142,14 +143,15 @@ class revPI() :
         #print("mv_tilt :"+str(self.tilt_mv2deg(readout))+" avg_value :"+str(self.tilt_mv2deg(avg_value)))
 
         #move lift
-       # if self.tilt_target and self.move_lift :
-       #     self.lift(ct)
+        if self.tilt_target and self.move_lift :
+            self.lift(ct)
 
         #test pid
-        height = self.tilt_to_linear(math.radians(self.tilt_current))
-        self.height = height
-        frequency = self.pid(height)
-        self.update_lift(frequency,ct)
+        if self.pid_control : 
+            height = self.tilt_to_linear(math.radians(self.tilt_current))
+            self.height = height
+            frequency = self.pid(height)
+            self.update_lift(frequency,ct)
 
 
     def tilt_mv2deg(self,mv) :
@@ -299,22 +301,31 @@ class revPI() :
 
 if __name__ == '__main__':
     import sys, select, os
+    import time
     os.system('cls' if os.name == 'nt' else 'clear')
     lemur = revPI()
+    print("right :"+str(lemur.rpi.io.secu_right.value),"left :"+str(lemur.rpi.io.secu_left.value))
+    lemur.pid_control = True
     lemur.start_cycle()
-    lemur.pid.tunings = (0.5, 0, 0)
-    lemur.set_lift_height(800)
+    lemur.pid.tunings = (1, 0, 0)
+    lemur.set_lift_height(1200)
     target = []
     height = []
+    t = []
+    t0 = time.time()
+    print("error :"+str(lemur.height_target-lemur.height))
+    print("press any key to stop test")
     while(1) :
         target.append(lemur.height_target)
         height.append(lemur.height)
-        print("error :"+str(lemur.height_target-lemur.height))
+        t.append(time.time()-t0)
+        #print("error :"+str(lemur.height_target-lemur.height))
         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
             break
+    print("error :"+str(lemur.height_target-lemur.height))
     lemur.rpi.exit()
     lemur.stop_lift("exit")
-    #import matplotlib.pyplot as plt
-    #plt.plot(height)
+    import hipsterplot as hplot
+    hplot.plot(height,x_vals=t)
     #plt.plot(height_target)
     #plt.show()
