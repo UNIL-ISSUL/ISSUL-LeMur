@@ -41,7 +41,7 @@ class revPI() :
     cycle_thread = None
     ramp = False
     f_lift_speed = None
-    pid_control = True
+    pid_control = False
 
     def __init__(self) -> None:
         #define RevPiModIO instance
@@ -54,8 +54,9 @@ class revPI() :
         self.tilt_current = self.tilt_mv2deg(rpi.io.tilt_mv.value)
         self.height = self.tilt_to_linear(math.radians(self.tilt_current))
         #define pid
-        self.pid = PID(0.75,0.225,0,setpoint = self.tilt_to_linear(math.radians(self.tilt_current)))
-        self.pid.output_limits = (-50, 50)
+        if self.pid_control : 
+            self.pid = PID(0.75,0.225,0,setpoint = self.tilt_to_linear(math.radians(self.tilt_current)))
+            self.pid.output_limits = (-50, 50)
         #set lift frequency to config value
         rpi.io.lift_speed_mv.value = config['LIFT_FREQ_HZ']*config['LIFT_HZ2mV'] #mV
         rpi.io.lift_up.value = False
@@ -305,7 +306,6 @@ if __name__ == '__main__':
     os.system('cls' if os.name == 'nt' else 'clear')
     lemur = revPI()
     print("right :"+str(lemur.rpi.io.secu_right.value),"left :"+str(lemur.rpi.io.secu_left.value))
-    lemur.pid_control = True
     lemur.start_cycle()
     lemur.pid.tunings = (1, 0, 0)
     lemur.set_lift_height(1200)
