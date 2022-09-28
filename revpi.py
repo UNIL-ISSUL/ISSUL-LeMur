@@ -41,7 +41,7 @@ class revPI() :
     cycle_thread = None
     ramp = False
     f_lift_speed = None
-    pid_control = False
+    pid_control = True
 
     def __init__(self) -> None:
         #define RevPiModIO instance
@@ -53,10 +53,8 @@ class revPI() :
         #read current angle
         self.tilt_current = self.tilt_mv2deg(rpi.io.tilt_mv.value)
         self.height = self.tilt_to_linear(math.radians(self.tilt_current))
-        #define pid
-        if self.pid_control : 
-            self.pid = PID(0.75,0.225,0,setpoint = self.tilt_to_linear(math.radians(self.tilt_current)))
-            self.pid.output_limits = (-50, 50)
+        self.pid = PID(0.6,0,1/8,setpoint = self.tilt_to_linear(math.radians(self.tilt_current)),sample_time=config['CYCLETIME_MS']*1.0e-3)
+        self.pid.output_limits = (-50, 50)
         #set lift frequency to config value
         rpi.io.lift_speed_mv.value = config['LIFT_FREQ_HZ']*config['LIFT_HZ2mV'] #mV
         rpi.io.lift_up.value = False
@@ -99,22 +97,34 @@ class revPI() :
     def update_lift(self,frequency, rpi = None) :
         if rpi is None :
             rpi = self.rpi
-        #update motor frequency
-        rpi.io.lift_speed_mv.value = int(abs(frequency)*config['LIFT_HZ2mV']) #mV
         #change up / down according to frequency sign
+        min_freq_up = 3
+        min_freq_down = -0.1
         if frequency > 0 :
             rpi.io.lift_down.value = False
             rpi.io.lift_up.value = True
+            if frequency < min_freq_up :
+                frequency = min_freq_up
         elif frequency < 0 :
             rpi.io.lift_up.value = False
-            rpi.io.lift_down.value = True 
+            rpi.io.lift_down.value = True
+            if frequency > min_freq_down :
+                frequency = min_freq_down
         else :
             rpi.io.lift_up.value = False
-            rpi.io.lift_down.value = False    
+            rpi.io.lift_down.value = False 
+        
+        #update motor frequency
+        rpi.io.lift_speed_mv.value = int(abs(frequency)*config['LIFT_HZ2mV']) #mV
 
     def set_lift_height(self,height_mm) :
         self.height_target = height_mm
         self.pid.setpoint = height_mm   
+    
+    def set_target(self,target) :
+        height = self.tilt_to_linear(math.radians(target))
+        self.set_lift_height(height)
+        self.target = target
 
     def start_cycle(self) :
         #start cycleloop, read_inclinaison will be call at every 10ms
@@ -141,17 +151,16 @@ class revPI() :
         readout = ct.io.tilt_mv.value
         avg_value = self.avg.update(readout)
         self.tilt_current = self.tilt_mv2deg(avg_value)
+        self.height = self.tilt_to_linear(math.radians(self.tilt_current))
         #print("mv_tilt :"+str(self.tilt_mv2deg(readout))+" avg_value :"+str(self.tilt_mv2deg(avg_value)))
 
         #move lift
-        if self.tilt_target and self.move_lift :
-            self.lift(ct)
+        #if self.tilt_target and self.move_lift :
+        #    self.lift(ct)
 
         #test pid
         if self.pid_control : 
-            height = self.tilt_to_linear(math.radians(self.tilt_current))
-            self.height = height
-            frequency = self.pid(height)
+            frequency = self.pid(self.height)
             self.update_lift(frequency,ct)
 
 
@@ -169,51 +178,6 @@ class revPI() :
          f  /= 100  #int is received from controller with 0.01 precision
          Vms = f * 1450 * 2*np.pi * config['Z_MOTOR'] * config['RADIUS_CYL_MM']*1e-3 / (50 * 60 * config['Z_BELT'])
          return Vms*3.6
-
-    def read_inclinaison(self,ct) :
-        #read value from sensor
-        value_mv = ct.io.tilt_mv.value
-        #shift array value to the right, last value is re-introduced first
-        self.tilt_mv = np.roll(self.tilt_mv,1)
-        #overwrite first value
-        self.tilt_mv[0] = value_mv
-        #define a counter
-        if ct.first :
-            ct.var.counter = 0
-        #increment counter until buffer is full of value
-        if ct.var.counter < buffer_size :
-            ct.var.counter += 1
-
-        #Compute mean of analog value to degree
-        self.tilt_current = np.mean(self.tilt_mv2deg(self.tilt_mv[0:ct.var.counter]))
-    
-    def lift(self,ct) :
-        #print("enter lift fonction")
-        #convert target and current position to radians
-        target = math.radians(self.tilt_target)
-        current = math.radians(self.tilt_current)
-        end_run = math.radians(self.tilt_stop)
-        #adjust lift speed is ramp mode active
-        if self.ramp :
-            speed_mm_s = self.f_lift_speed(self.tilt_current)
-            ct.io.lift_speed_mv.value = int(self.convert_lift_speed_to_mV(speed_mm_s))
-        #move lift if target is not reached
-        if abs(target-current) > math.radians(angular_resolution): #target not reach yet
-            if self.move_up : #move up
-                if end_run - current > 0 : #end point not reach
-                    ct.io.lift_up.value = True
-                    ct.io.lift_down.value = False
-                else : #stop motion
-                    self.stop_lift('end of motion')
-            else : #move down
-                if end_run - current < 0 : #end_point not reach
-                    ct.io.lift_down.value = True
-                    ct.io.lift_up.value = False
-                else : #stop motion
-                    self.stop_lift('end of motion')
-        else : # target is reached
-            print('lift displacement done')
-            self.stop_lift('target reached')
     
     def horizontal_position(self,angle_rad) :
         disp = config['BELT_LENGTH_MM']*math.cos(angle_rad)-config['BELT_HEIGHT_MM']*math.cos(np.pi/2-angle_rad)
@@ -227,46 +191,6 @@ class revPI() :
         height -= temp
         #print('linear_dist', length, math.degrees(angle_rad))
         return height
-    
-    def find_stop_angle_rad(self,x,target_rad,dst_stop_signed) : 
-        #print('args',math.degrees(x),math.degrees(target_rad),dst_stop_signed)
-        temp = self.tilt_to_linear(target_rad)-self.tilt_to_linear(x)-dst_stop_signed
-        #print('result ',temp)
-        return temp
-
-    def set_target(self,target) :
-        #set new target if lift is not moving
-        if (not self.rpi.io.lift_up.value) and (not self.rpi.io.lift_down.value) :
-            #convert angles in radians
-            target = math.radians(target)
-            current = math.radians(self.tilt_current)
-            #Compute distance to travel on  screw
-            delta = self.tilt_to_linear(target)-self.tilt_to_linear(current)
-            print('delta :',delta)
-            #Compute lift vertical acceleration
-            #moteur speed 1400 tr/min @ 50HZ
-            #screw step 2.5 mm/tr NSE10-SN-KGT
-            acc_mm_s2 = 1400.0 / 60 * 2.5 / config['LIFT_ACC_S']
-            #distance travel during acc -> primitive de la vistesse du type f(t)=a.t -> F(t) = a.t^2/2
-            dst_stop = acc_mm_s2 * config['LIFT_ACC_S']**2 / 2
-            #Check if Max speed is reach during displacement
-            if abs(delta/2) < dst_stop :
-                #max speed is not reach
-                dst_stop = abs(delta/2)
-            print('dst_stop ',dst_stop)
-            #distance to travel before stopping move command
-            from scipy.optimize import root
-            res = root(self.find_stop_angle_rad,x0=target,args=(target,math.copysign(dst_stop,delta)))
-            target_stop = res.x
-            self.tilt_stop = math.degrees(target_stop)
-            self.tilt_target = math.degrees(target)
-            self.move_up = 1 if target > current else 0
-            print('target received ',math.degrees(target),' corrected target : ',math.degrees(target_stop))
-            self.move_lift = True
-        #stop motion
-        else :
-            #stop lift motion
-            self.stop_lift()
     
     def set_ramp(self,start_angle_deg,stop_angle_deg,angular_speed_deg_min) :
         #define ramp mode
@@ -307,25 +231,37 @@ if __name__ == '__main__':
     lemur = revPI()
     print("right :"+str(lemur.rpi.io.secu_right.value),"left :"+str(lemur.rpi.io.secu_left.value))
     lemur.start_cycle()
-    lemur.pid.tunings = (1, 0, 0)
-    lemur.set_lift_height(1200)
+    Ku = 4  # old 4
+    Tu = 3    # 3.3 at 4
+    #lemur.pid.tunings = (0.2*Ku, 1/(0.5*Tu), 1/(0.33*Tu))
+    lemur.pid.tunings = (0.6,0.0,1/8)
+    #gain critique 4
+    lemur.set_lift_height(lemur.height+500)
+    #lemur.set_lift_height(1000)
     target = []
-    height = []
+    h = []
     t = []
     t0 = time.time()
     print("error :"+str(lemur.height_target-lemur.height))
     print("press any key to stop test")
     while(1) :
         target.append(lemur.height_target)
-        height.append(lemur.height)
+        h.append(lemur.height)
         t.append(time.time()-t0)
-        #print("error :"+str(lemur.height_target-lemur.height))
+        print("error :"+str(lemur.height_target-lemur.height))#,"components :"+str(lemur.pid.components))
         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
             break
     print("error :"+str(lemur.height_target-lemur.height))
     lemur.rpi.exit()
     lemur.stop_lift("exit")
     import hipsterplot as hplot
-    hplot.plot(height,x_vals=t)
-    #plt.plot(height_target)
+    hplot.plot(h,x_vals=t,num_x_chars=150,num_y_chars=20)
+    #import plotille
+    #print(plotille.plot(t, height))
+    #import plotext as plt
+    #plt.scatter(t,h)
+    #plt.title("Scatter Plot")
     #plt.show()
+    #response = np.array([t,h])
+    #np.savetxt('response.txt',np.column_stack((t,h)),delimiter=',')
+
