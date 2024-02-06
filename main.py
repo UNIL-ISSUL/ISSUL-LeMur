@@ -10,11 +10,12 @@ from kivy.clock import Clock
 from kivy.logger import Logger
 from kivy.config import Config
 from kivy.core.window import Window
+from kivy.uix.accordion import Accordion, AccordionItem
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.garden.led import Led
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty
-import revpi
+import controler
 import math
 import time
 from time import strftime, localtime, gmtime, sleep
@@ -155,8 +156,8 @@ class LeMurApp(App):
         Clock.schedule_interval(self.update_running,self.delta_update_s)
         Clock.schedule_interval(self.update_values,0.1)
         if self.revpi :
-            self.tilt = float(self.revpi.tilt_current)
-            self.tilt_out = float(self.revpi.tilt_current)
+            self.tilt = self.revpi.get_lift_angle()
+            self.tilt_out = self.revpi.get_lift_angle()
     
     def on_stop(self):
         print('bye bye')
@@ -196,8 +197,8 @@ class LeMurApp(App):
             self.safety_back = self.revpi.rpi.io.secu_back.value
             self.safety_emergency = self.revpi.rpi.io.secu_emergency.value
             #real time value
-            self.tilt_out = float(self.revpi.tilt_current)
-            self.belt_speed_out = self.revpi.read_belt_speed()
+            self.tilt_out = self.revpi.get_lift_angle()
+            self.belt_speed_out = self.revpi.get_belt_speed()
     
     def update_running(self,_) :
         if self.revpi :
@@ -220,11 +221,11 @@ class LeMurApp(App):
         self.elapsed_distance = 0
         self.elapsed_elevation = 0
         if self.revpi :
-            self.revpi.rpi.io.belt_start.value=1
+            self.revpi.belt_start()
         if self.root.ids['ramp'].state :
             self.event_ramp = Clock.schedule_interval(self.update_ramp,self.root.ids['ramp'].step_duration_s)
     
-    def stop(self,dt) :
+    def stop(self) :
         stop_widget = self.root.ids['controller'].ids['stop']
         start_widget = self.root.ids['controller'].ids['start']
         if stop_widget.state == 'normal' :
@@ -232,7 +233,7 @@ class LeMurApp(App):
             start_widget.state = 'normal'
         self.running = False
         if self.revpi :
-            self.revpi.rpi.io.belt_stop.value=0
+            self.revpi.belt_stop()
         if self.root.ids['ramp'].state :
             if self.event_ramp : 
                 self.event_ramp.cancel()
@@ -327,11 +328,10 @@ class LeMurApp(App):
 
         self.tilt = math.degrees(math.asin(self.vertical_speed / (self.belt_speed*1000)))
         Logger.info("UI : Tilt updated : "+str(self.tilt))
-        
     
 if __name__ == '__main__':
-    if revpi.is_raspberry_pi() : 
-        lemur = revpi.revPI()
+    if controler.is_raspberry_pi() : 
+        lemur = controler.revPI()
         lemur.start_cycle()
     else :
         lemur = None

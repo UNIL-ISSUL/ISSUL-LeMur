@@ -120,7 +120,7 @@
         text : 'Stop'
         state : 'down'
         group : 'controller'
-        on_press : app.stop(0)
+        on_press : app.stop()
     ToggleButton :
         id : start
         text : 'Start'
@@ -201,46 +201,73 @@
             text : "Initialisation"
             on_press : app.init_ramp(start_speed.value)
 
-GridLayout :
-    cols :3
-    spacing : 100
-    padding : 100
-    
-    NumericInput :
-        id : tilt
-        value : app.tilt
-        on_value : app.update_parameters(tilt)
-        name : 'Inclinaison'
-        unit : '°'
-        min_value : 0
-        max_value : 85
-    
-    NumericInput :
-        id : belt_speed
-        value : app.belt_speed
-        on_value : app.update_parameters(belt_speed)
-        name : 'Vitesse tapis'
-        unit : 'km/h'
-        min_value : 0
-        max_value : 40
-    
-    NumericInput :
-        id : vertical_speed
-        value : app.vertical_speed
-        on_value : app.update_parameters(vertical_speed)
-        name : 'Vitesse ascentionelle'
-        unit : 'm/h'
-        locked : True
-        min_value : 0
-        max_value : 6000
-        increment_list : [10, 100, 500]
 
-    Ramp :
-        id : ramp
 
-    Controller :
-        id : controller
+Accordion :
+    orientation : 'vertical'
+    AccordionItem :
+        title : 'Manual mode'
+        collapse: False
+        GridLayout :
+            cols :3
+            spacing : 100
+            padding : 100
+            
+            NumericInput :
+                id : tilt
+                value : app.tilt
+                on_value : app.update_parameters(tilt)
+                name : 'Inclinaison'
+                unit : '°'
+                min_value : 0
+                max_value : 85
+            
+            NumericInput :
+                id : belt_speed
+                value : app.belt_speed
+                on_value : app.update_parameters(belt_speed)
+                name : 'Vitesse tapis'
+                unit : 'km/h'
+                min_value : 0
+                max_value : 40
+            
+            NumericInput :
+                id : vertical_speed
+                value : app.vertical_speed
+                on_value : app.update_parameters(vertical_speed)
+                name : 'Vitesse ascentionelle'
+                unit : 'm/h'
+                locked : True
+                min_value : 0
+                max_value : 6000
+                increment_list : [10, 100, 500]
 
-    Status :
+            Label :
+                text : 'Mode manuel'
+                font_size : 24
+
+            Controller :
+                id : controller
+
+            Label :
+                text : 'Mode manuel'
+                font_size : 24
+    AccordionItem :
+        title : 'Automatic mode'
+        GridLayout :
+            cols : 1
+            spacing : 100
+            padding : 100
+
+            Ramp :
+                id : ramp
+    AccordionItem :
+        title : 'Information'
+        GridLayout :
+            cols : 1
+            spacing : 100
+            padding : 100
+            Status :
+                id : status
 
 
