@@ -165,7 +165,7 @@ class LeMurApp(App):
 
     def move_lift(self,dt) :
         if self.revpi :
-            self.revpi.set_target(self.tilt)
+            self.revpi.set_lift_angle(self.tilt)
     
     def init_ramp(self,start_speed) :
         #lock tilt screen
@@ -221,7 +221,7 @@ class LeMurApp(App):
         self.elapsed_distance = 0
         self.elapsed_elevation = 0
         if self.revpi :
-            self.revpi.belt_start()
+            self.revpi.start_belt()
         if self.root.ids['ramp'].state :
             self.event_ramp = Clock.schedule_interval(self.update_ramp,self.root.ids['ramp'].step_duration_s)
     
@@ -233,7 +233,7 @@ class LeMurApp(App):
             start_widget.state = 'normal'
         self.running = False
         if self.revpi :
-            self.revpi.belt_stop()
+            self.revpi.stop_belt()
         if self.root.ids['ramp'].state :
             if self.event_ramp : 
                 self.event_ramp.cancel()
@@ -332,7 +332,6 @@ class LeMurApp(App):
 if __name__ == '__main__':
     if controler.is_raspberry_pi() : 
         lemur = controler.revPI()
-        lemur.start_cycle()
     else :
         lemur = None
     LeMurApp(lemur).run()

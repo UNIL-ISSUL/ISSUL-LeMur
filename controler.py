@@ -25,32 +25,29 @@ class revPI() :
 
     def __init__(self) -> None:
         #define RevPiModIO instance
-        rpi = revpimodio2.RevPiModIO(autorefresh=True)
+        self.rpi = revpimodio2.RevPiModIO(autorefresh=True)
+        #reduce cylce time to 10Hz
+        self.rpi.cycletime = 100
+        
         #set belt default value
-        rpi.io.belt_stop.value=1
-        rpi.io.belt_start.value=0
-        rpi.io.belt_dir.value=1
-        #set current speed to 0
-        #
-        #enable speed PID
-        self.enable_belt(True)
-        #disable distance PID
-        #
-
+        self.rpi.io.belt_stop.value=1
+        self.rpi.io.belt_start.value=0
+        self.rpi.io.belt_dir.value=1
+        #set current speed to 
+        
         #set lift default value
-        #read current lift angle et set it as set point
-        #
-        #enable lift PID
-        self.enable_lift(True)
+        self.set_lift_angle(self.get_lift_angle())
+
+        #enable PID
+        self.enable_pid(0,True)      
 
         #set event to create latch function on belt-start and belt_stop
-        rpi.io.belt_start.reg_timerevent(self.latch_output, 100,edge=revpimodio2.RISING,as_thread=True)    #start is trigger to 0 after 100ms
-        rpi.io.belt_stop.reg_timerevent(self.latch_output, 100,edge=revpimodio2.FALLING,as_thread=True)    #stop is trigger to 1 after 100ms
+        self.rpi.io.belt_start.reg_timerevent(self.latch_output, 100,edge=revpimodio2.RISING,as_thread=True)    #start is trigger to 0 after 100ms
+        self.rpi.io.belt_stop.reg_timerevent(self.latch_output, 100,edge=revpimodio2.FALLING,as_thread=True)    #stop is trigger to 1 after 100ms
         #set event to handle safety input
-        rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
+        self.rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
         #close the program properly
-        rpi.handlesignalend(cleanupfunc=self.stop_all)
-        self.rpi = rpi
+        #self.rpi.handlesignalend(cleanupfunc=self.stop_all)
     
     def stop_all(self) :
         #stop lift
@@ -71,45 +68,38 @@ class revPI() :
         self.enable_lift(False)
     
     def set_lift_angle(self,angle) :
-        pass
+        print(self.rpi.io.pid_enable.value)
+        self.rpi.io.lift_angle_SP.value = round(angle * 100)
 
     def get_lift_angle(self) :
-        pass
+        return float(self.rpi.io.lift_angle_current.value/100)
 
-    def enable_lift(self,bool) : 
-        #set first bit of enable_pids register to bool
-        self.rpi.io.enable_pids.value = self.rpi.io.enable_pids.value & (bool << 0)
-
-    def enable_belt(self,bool) : 
-        #set second bit of enable_pids register to bool
-        self.rpi.io.enable_pids.value = self.rpi.io.enable_pids.value & (bool << 1)
-
-    def enable_dist(self,bool) : 
-        #set second bit of enable_pids register to bool
-        self.rpi.io.enable_pids.value = self.rpi.io.enable_pids.value & (bool << 2)
+    def enable_pid(self,index,bool) :
+        if bool :
+            self.rpi.io.pid_enable.value = self.rpi.io.pid_enable.value | (1 << index)
+        else :
+            self.rpi.io.pid_enable.value = self.rpi.io.pid_enable.value & ~(1 << index)
 
     def start_belt(self,msg="") :
         print('START belt','reason :',msg)
-        self.enable_belt(True)
         self.rpi.io.belt_start.value=1
 
     def stop_belt(self,msg="") :
         print('STOP belt','reason :',msg)
-        self.rpi.io.belt_stop.value=1
-        self.enable_belt(False)
+        self.rpi.io.belt_start.value=0
 
     #set belt speed to controller via modbus
     def set_belt_speed(self,Vkmh) :
-        Vms = Vkmh / 3.6 
-        value = Vms *100 #int is sent to frequency inverter with 0.01 precision
-        #int is sent to frequency inverter with 0.01 precision
+        #Vms = Vkmh / 3.6 
+        value = round(Vkmh * 100) #int is sent to frequency inverter with 0.01 precision
+        self.rpi.io.belt_speed_SP.value = value
     
     #return belt spped in km/h
     def get_belt_speed(self) :
-        #read modbus value in hundred of m/s 
-        value = 0.0 / 100
+        #read modbus value in hundred of m/s
+        value = self.rpi.io.belt_speed_current.value / 100
         #return value in km/h
-        return value * 3.6
+        return value
 
 if __name__ == '__main__':
     import sys, select, os
