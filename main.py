@@ -332,6 +332,7 @@ class LeMurApp(App):
 if __name__ == '__main__':
     if controler.is_raspberry_pi() : 
         lemur = controler.revPI()
+        lemur.mainloop()
     else :
         lemur = None
     LeMurApp(lemur).run()
