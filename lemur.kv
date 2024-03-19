@@ -50,7 +50,24 @@
                 text : '+'
                 disabled : checkbox.active or root.hidden
                 on_press : root.increase()
-    
+
+<NumericInputCompact> :
+    orientation : 'vertical'
+    Label :
+        text :root.name + ": " + "{:.1f}".format(root.value) + " " + root.unit
+        font_size : 24
+    BoxLayout : 
+        orientation : 'horizontal'
+        Button :
+            text : "-"
+            on_press : root.decrease()
+        Button :
+            text : "{:.1f}".format(root.value)
+        Button :
+            text : "+"
+            on_press : root.increase()
+
+
 #:import timedelta datetime.timedelta
 
 <NumericDisplay>
@@ -82,7 +99,7 @@
     Button :
         id : lift
         text : 'Changer inclinaison'
-        on_press : app.move_lift()
+        on_press : app.move_lift(0)
     NumericDisplay :
         name : 'Vitesse'
         unit : 'km/h'
@@ -132,105 +149,125 @@
 <Ramp> :
     id : ramp
     orientation : 'vertical'
+    size_hint_y : 0.1
     BoxLayout : 
         orientation : 'horizontal'
         Switch :
             id : switch
             size_hint_x : 0.1
-            active : False
+            active : root.state
+            on_active : root.toggle_state(switch.active)
         Label :
             text : "Mode Rampe"
             font_size : 24
-    BoxLayout : 
+    GridLayout : 
         disabled : not switch.active
-        orientation : 'horizontal'
-        NumericDisplay :
-            id : start_angle
-            name : "Angle début"
-            unit : "°"
-            value : app.tilt_out
-        NumericDisplay :
-            id : stop_angle
-            name : "Angle fin"
-            unit : "°"
-            value : app.tilt
-    
-    BoxLayout :
-        disabled : not switch.active
-        orientation : 'horizontal'
-        NumericDisplay :
-            id : angular_speed
-            name : "Vitesse angulaire"
-            unit : "°/min"
-            value : slider.value
-
-        Slider :
-            id : slider
-            min : 10
-            step : 1
-            max : 20
+        cols : 2
+        spacing : 10
+        NumericInputCompact :
+            id : start_speed
+            name : 'Vitesse initiale'
+            unit : 'km/h'
+            value : 12
+            on_value : root.compute_duration(0)
+        NumericInputCompact :
+            id : stop_speed
+            name : 'Vitesse finale'
+            unit : 'km/h'
+            value : 4
+            on_value : root.compute_duration(0)
+        NumericInputCompact :
+            id : step_speed
+            name : 'Incrément vitesse'
+            unit : 'km/h'
+            min : 0.1
+            max : 1
+            step : 0.1
+            value :0.1
+            on_value : root.compute_duration(0)
+        NumericInputCompact :
+            id : step_duration
+            name : 'Durée palier'
+            unit : 's'
             value : 10
-            on_value : root.compute_duration(self.value,start_angle.value,stop_angle.value)
+            on_value : root.compute_duration(0)
     
-    BoxLayout :
-        disabled : not switch.active
-        orientation : 'horizontal'
-        padding : 20
         NumericDisplay :
             name : "Durée"
             unit : "min"
             value : root.duration_min
         
-        ToggleButton :
-            text : "start"
-            on_press : app.start_ramp(self.state,start_angle.value,stop_angle.value,angular_speed.value)
+        Button :
+            text : "Initialisation"
+            on_press : app.init_ramp(start_speed.value)
 
-GridLayout :
-    cols :3
-    spacing : 20
-    padding : 20
-    
-    NumericInput :
-        id : tilt
-        value : app.tilt
-        on_value : app.update_parameters(tilt)
-        name : 'Inclinaison'
-        unit : '°'
-        min_value : 0
-        max_value : 85
-    
-    NumericInput :
-        id : belt_speed
-        value : app.belt_speed
-        on_value : app.update_parameters(belt_speed)
-        name : 'Vitesse tapis'
-        unit : 'km/h'
-        min_value : 0
-        max_value : 40
-    
-    NumericInput :
-        id : vertical_speed
-        value : app.vertical_speed
-        on_value : app.update_parameters(vertical_speed)
-        name : 'Vitesse ascentionelle'
-        unit : 'm/h'
-        locked : True
-        min_value : 0
-        max_value : 6000
-        increment_list : [10, 100, 500]
 
-    Ramp :
 
-    Controller :
+Accordion :
+    orientation : 'vertical'
+    AccordionItem :
+        title : 'Manual mode'
+        collapse: False
+        GridLayout :
+            cols :3
+            spacing : 100
+            padding : 100
+            
+            NumericInput :
+                id : tilt
+                value : app.tilt
+                on_value : app.update_parameters(tilt)
+                name : 'Inclinaison'
+                unit : '°'
+                min_value : 0
+                max_value : 85
+            
+            NumericInput :
+                id : belt_speed
+                value : app.belt_speed
+                on_value : app.update_parameters(belt_speed)
+                name : 'Vitesse tapis'
+                unit : 'km/h'
+                min_value : 0
+                max_value : 40
+            
+            NumericInput :
+                id : vertical_speed
+                value : app.vertical_speed
+                on_value : app.update_parameters(vertical_speed)
+                name : 'Vitesse ascentionelle'
+                unit : 'm/h'
+                locked : True
+                min_value : 0
+                max_value : 6000
+                increment_list : [10, 100, 500]
 
-    Label :
-        text :'6'
+            Label :
+                text : 'Mode manuel'
+                font_size : 24
 
-    Status :
-    
-    Label :
-        text :'8'
-    
-    Label :
-        text :'9'
+            Controller :
+                id : controller
+
+            Label :
+                text : 'Mode manuel'
+                font_size : 24
+    AccordionItem :
+        title : 'Automatic mode'
+        GridLayout :
+            cols : 1
+            spacing : 100
+            padding : 100
+
+            Ramp :
+                id : ramp
+    AccordionItem :
+        title : 'Information'
+        GridLayout :
+            cols : 1
+            spacing : 100
+            padding : 100
+            Status :
+                id : status
+
 

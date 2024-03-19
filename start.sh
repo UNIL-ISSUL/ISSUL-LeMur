@@ -1,0 +1,1 @@
+python3 /home/pi/ISSUL-LeMur/main.py
