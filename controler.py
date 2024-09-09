@@ -13,6 +13,8 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
+from kivy.logger import Logger
+
 def read_yaml(file_path):
     with open(file_path, "r") as f:
         return yaml.safe_load(f)
@@ -36,7 +38,7 @@ class revPI() :
         #define RevPiModIO instance
         self.rpi = revpimodio2.RevPiModIO(autorefresh=True)
         #reduce cylce time to 10Hz
-        self.rpi.cycletime = 100
+        self.rpi.cycletime = 500
         
         #set belt default value
         self.rpi.io.belt_stop.value=1
@@ -101,16 +103,24 @@ class revPI() :
         self.rpi.io.belt_stop.value=0
 
     #set belt speed to controller via modbus
-    def set_belt_speed(self,Vkmh) :
-        Hz = Vkmh * 5 / 2.26 #stair speed based on calibration 
+    def set_belt_speed(self,Vkmh, steps = False) :
+        if steps :
+            Hz = Vkmh * config['CONV_STEPS2HZ']
+        else :
+            Hz = Vkmh *  config['CONV_BELT2HZ']
         value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
+        Logger.info("belt frequency updated : " + str(value))
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
     
     #return belt spped in km/h
-    def get_belt_speed(self) :
+    def get_belt_speed(self, steps = False) :
         #read modbus value in hundred of m/s
         value = merge_registers(self.rpi.io.belt_speed_current_0.value,self.rpi.io.belt_speed_current_1.value)
         value = 1.0 * value / 100
+        if steps :
+            return value * config['CONV_HZ2STEPS']
+        else :
+            return value * config['CONV_HZ2BELT']
         #return value in km/h
         return value
 

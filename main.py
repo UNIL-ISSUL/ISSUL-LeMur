@@ -199,19 +199,21 @@ class LeMurApp(App):
     def change_belt_speed(self,_=None) :
         Logger.info("belt speed target updated : " + str(self.belt_speed_target))
         if self.revpi :
-            self.revpi.set_belt_speed(self.belt_speed_target)
+            self.revpi.set_belt_speed(self.belt_speed_target,self.steps_active)
         else :
             self.belt_speed_value = self.belt_speed_target
     
-    def toggle_steps(self,status) :
-        steps_active = status
+    def toggle_steps(self,active) :
         color = [0, 0, 0]
         self.steps_background_color = [0, 0, 0,1]
         self.speed_text = "Vitesse bande"
-        if steps_active :
+        if active :
             color = [204/255, 82/255, 0/255]
             self.steps_background_color = [204/255, 82/255, 0/255,1]
             self.speed_text = "Vitesse marches"
+        #update belt speed according to new status
+        self.steps_active = active
+        self.change_belt_speed()
         #change background color
         #with self.root.ids['steps_grid'].canvas.before:
         #    Color(color[0], color[1], color[2], 1)
@@ -249,7 +251,7 @@ class LeMurApp(App):
             self.any_safety = self.safety_right or self.safety_left or self.safety_front or self.safety_back or self.safety_emergency
             #real time value
             self.tilt_value = self.revpi.get_lift_angle()
-            self.belt_speed_value = self.revpi.get_belt_speed()
+            self.belt_speed_value = self.revpi.get_belt_speed(self.steps_active)
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
         else :
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
