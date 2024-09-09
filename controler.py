@@ -21,6 +21,15 @@ def read_yaml(file_path):
 file = Path(__file__)
 config = read_yaml(file.parent/'settings.yaml')
 
+def merge_registers(reg_hsb, reg_lsb) :
+    value = (reg_hsb << 16)  + reg_lsb
+    return value
+
+def split_value(value) :
+    value_hsb = value >> 16
+    value_lsb = value & 0xFFFF
+    return value_hsb, value_lsb
+
 class revPI() :
 
     def __init__(self) -> None:
@@ -93,14 +102,15 @@ class revPI() :
 
     #set belt speed to controller via modbus
     def set_belt_speed(self,Vkmh) :
-        #Vms = Vkmh / 3.6 
-        value = round(Vkmh * 100) #int is sent to frequency inverter with 0.01 precision
-        self.rpi.io.belt_speed_SP.value = value
+        Hz = Vkmh * 5 / 2.26 #stair speed based on calibration 
+        value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
+        self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
     
     #return belt spped in km/h
     def get_belt_speed(self) :
         #read modbus value in hundred of m/s
-        value = self.rpi.io.belt_speed_current.value / 100
+        value = merge_registers(self.rpi.io.belt_speed_current_0.value,self.rpi.io.belt_speed_current_1.value)
+        value = 1.0 * value / 100
         #return value in km/h
         return value
 
