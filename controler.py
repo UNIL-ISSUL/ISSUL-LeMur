@@ -93,7 +93,7 @@ class revPI() :
 
     #set belt speed to controller via modbus
     def set_belt_speed(self,Vkmh) :
-        #Vms = Vkmh / 3.6 
+        Hz = Vkmh * 5 / 2.26 #stair speed based on calibration  
         value = round(Vkmh * 100) #int is sent to frequency inverter with 0.01 precision
         self.rpi.io.belt_speed_SP.value = value
     

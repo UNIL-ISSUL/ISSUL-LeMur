@@ -1,7 +1,7 @@
 <NumericInput> :
     orientation : 'vertical'
     Label :
-        text :root.name + " : " + "{:.1f}".format(root.value) + " / " + "{:.1f}".format(root.target) + " " + root.unit
+        text :root.name + " : " + "{:.2f}".format(root.value) + " / " + "{:.2f}".format(root.target) + " " + root.unit
         font_size : 24
         disabled : root.hidden
     Slider : 
@@ -74,7 +74,7 @@
 #:import timedelta datetime.timedelta
 
 <NumericDisplay>
-    text: root.name +' : '+ "{:.1f}".format(root.value) +' '+ root.unit if not root.has_target else root.name +' : '+ "{:.1f}".format(root.value) + ' / ' + "{:.1f}".format(root.target) + '  ' + root.unit  
+    text: root.name +' : '+ "{:.2f}".format(root.value) +' '+ root.unit if not root.has_target else root.name +' : '+ "{:.2f}".format(root.value) + ' / ' + "{:.2f}".format(root.target) + '  ' + root.unit  
     font_size : 24
 
 <StatusDisplay>
@@ -106,7 +106,7 @@
         unit : 'm'
         value : app.elapsed_distance
     NumericDisplay :
-        name : 'Vitesse tapis'
+        name : app.speed_text
         unit : 'km/h'
         value : app.belt_speed_value
         target : app.belt_speed_target
@@ -214,6 +214,7 @@ BoxLayout :
     orientation : 'vertical'
     padding : 10
     spacing : 10
+    id : main
     GridLayout :
         cols :3
         spacing : 10
@@ -226,8 +227,8 @@ BoxLayout :
             on_target : app.update_targets(tilt)
             name : 'Inclinaison'
             unit : '°'
-            min_value : 5   #limité par le l'axe des poulies des courroies
-            max_value : 60  #limité par le l'axe des poulies des courroies
+            min_value : 15   #limité par le l'axe des poulies des courroies
+            max_value : 40  #limité par le l'axe des poulies des courroies
             auto_update : False
         
         NumericInput :
@@ -235,10 +236,10 @@ BoxLayout :
             value : app.belt_speed_value
             target : app.belt_speed_target
             on_target : app.update_targets(belt_speed)
-            name : 'Vitesse tapis'
+            name : app.speed_text
             unit : 'km/h'
             min_value : 0
-            max_value : 40
+            max_value : 5
             auto_update : True
 
         NumericInput :
@@ -287,20 +288,38 @@ BoxLayout :
                             text : 'Vitesse tapis'
                             group : 'vertical_speed'
                             on_press : app.mode_changed(self)
-                Label :
-                    text :"toto"
+                GridLayout :
+                    id : steps_grid
+                    cols :2
+                    spacing : 10
+                    padding : 0
+                    canvas.before:
+                        Color:
+                            rgba: app.steps_background_color
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                    Label :
+                        text : 'Utilisation des marches'
+                        font_size : 24
+                    Switch :
+                        id : steps
+                        size_hint_x : 0.1
+                        active : app.steps_active
+                        on_active : app.toggle_steps(steps.active)
+                        
 
-        AccordionItem :
-            title : 'Automatic mode'
-            GridLayout :
-                cols : 1
-                spacing : 100
-                padding : 100
+        #AccordionItem :
+        #    title : 'Ramp'
+        #    GridLayout :
+        #        cols : 1
+        #        spacing : 100
+        #        padding : 100
 
-                Ramp :
-                    id : ramp
+        #        Ramp :
+        #            id : ramp
         AccordionItem :
-            title : 'Information'
+            title : 'admin panel'
             GridLayout :
                 cols : 1
                 spacing : 100
@@ -310,5 +329,14 @@ BoxLayout :
 
     Controller :
         id : controller
+    Label :
+        text : '[b][color=ff0000]SECURITE ACTIVE[/color][/b]' if app.any_safety else ''
+        font_size : 24
+        size_hint_y : 0.1
+        size_hint_x : 1
+        halign : 'center'
+        valign : 'center'
+        text_size : self.size
+        markup : True
 
 
