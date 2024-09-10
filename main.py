@@ -147,9 +147,9 @@ class LeMurApp(App):
     #revpi reference
     revpi = None
     #UI properties
-    belt_speed_target = NumericProperty(5)
+    belt_speed_target = NumericProperty(2.5)
     belt_speed_value = NumericProperty(0)
-    tilt_target = NumericProperty(5)
+    tilt_target = NumericProperty(27.5)
     tilt_value = NumericProperty(0)
     vertical_speed_target = NumericProperty(1000)
     vertical_speed_value = NumericProperty()
@@ -173,6 +173,9 @@ class LeMurApp(App):
     last_time = 0
     #ramp properties
     event_ramp = None
+    #status widgets
+    steps_widget = StatusDisplay(name="Marches",active=steps_active)
+    safety_F_widget = safety_B_widget = safety_L_widget = safety_R_widget = safety_E_widget = ObjectProperty(None)
     
     #overcharge init to define rpi instance
     def __init__(self, revpi, **kwargs):
@@ -211,6 +214,7 @@ class LeMurApp(App):
             color = [204/255, 82/255, 0/255]
             self.steps_background_color = [204/255, 82/255, 0/255,1]
             self.speed_text = "Vitesse marches"
+
         #update belt speed according to new status
         self.steps_active = active
         self.change_belt_speed()

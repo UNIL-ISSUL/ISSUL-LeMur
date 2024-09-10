@@ -81,14 +81,14 @@
     orientation : 'horizontal'
     spacing : 10
     Led :
-        size_hint_x : 0.1
+        #size_hint_x : 0.2
         source: 'shapes/basic_squarerounded.png'
         state : 'on' if root.active else 'off'
         id : led
     Label :
         text : root.name
         font_size : 18
-        text_size : self.size
+        #text_size : self.size
     	valign : 'center'
     	halign : 'left'
 
@@ -136,8 +136,8 @@
         group : 'controller'
         on_press : app.start()
 
-<Status@GridLayout> :
-    cols : 2
+<Status@BoxLayout> :
+    orientation : 'horizontal'
     spacing : 10
     StatusDisplay :
         name : 'Sécurité gauche'
@@ -215,6 +215,7 @@ BoxLayout :
     padding : 10
     spacing : 10
     id : main
+
     GridLayout :
         cols :3
         spacing : 10
@@ -255,88 +256,79 @@ BoxLayout :
             auto_update : True
             increment_list : [10, 50, 100]
     
-    Accordion :
-        id : accordion
+    Label :
+        text : 'Controle de la vitesse verticale :'
+        size_hint_y : 0.1
+        font_size : 24
+
+    BoxLayout :
         orientation : 'horizontal'
-        AccordionItem :
-            title : 'Settings'
-            collapse: False
-            GridLayout :
-                cols :2
-                spacing : 10
-                padding : 0
-                GridLayout :
-                    cols :2
-                    spacing : 10
-                    padding : 0
-                    Label :
-                        text : 'Controle de la vitesse verticale :'
-                        font_size : 24
-                    BoxLayout :
-                        orientation : 'horizontal'
-                        size_hint_x : 0.3
-                        ToggleButton :
-                            text : 'Aucun'
-                            group : 'vertical_speed'
-                            state : 'down'
-                            on_press : app.mode_changed(self)
-                        ToggleButton :
-                            text : 'Inclinaison'
-                            group : 'vertical_speed'
-                            on_press : app.mode_changed(self)
-                        ToggleButton :
-                            text : 'Vitesse tapis'
-                            group : 'vertical_speed'
-                            on_press : app.mode_changed(self)
-                GridLayout :
-                    id : steps_grid
-                    cols :2
-                    spacing : 10
-                    padding : 0
-                    canvas.before:
-                        Color:
-                            rgba: app.steps_background_color
-                        Rectangle:
-                            pos: self.pos
-                            size: self.size
-                    Label :
-                        text : 'Utilisation des marches'
-                        font_size : 24
-                    Switch :
-                        id : steps
-                        size_hint_x : 0.1
-                        active : app.steps_active
-                        on_active : app.toggle_steps(steps.active)
-                        
+        size_hint_y : 0.1
+        spacing : 10
+        ToggleButton :
+            text : 'Aucun'
+            group : 'vertical_speed'
+            state : 'down'
+            on_press : app.mode_changed(self)
+        ToggleButton :
+            text : 'Inclinaison'
+            group : 'vertical_speed'
+            on_press : app.mode_changed(self)
+        ToggleButton :
+            text : 'Vitesse tapis'
+            group : 'vertical_speed'
+            on_press : app.mode_changed(self)
 
-        #AccordionItem :
-        #    title : 'Ramp'
-        #    GridLayout :
-        #        cols : 1
-        #        spacing : 100
-        #        padding : 100
+    BoxLayout : 
+        orientation : 'vertical'
+        canvas.before:
+            Color:
+                rgba: (204/255, 82/255, 0/255,1) if app.steps_active else (0, 0, 0, 1)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        size_hint_y : 0.3
+        padding : [0,0,0,20]
 
-        #        Ramp :
-        #            id : ramp
-        AccordionItem :
-            title : 'admin panel'
-            GridLayout :
-                cols : 1
-                spacing : 100
-                padding : 100
-                Status :
-                    id : status
+        Label :
+            text : 'Surface de marche'
+            font_size : 24
+        BoxLayout :
+            orientation : 'horizontal'
+            spacing : 10
+            ToggleButton :
+                text : 'Bande'
+                group : 'steps'
+                state : 'down'
+                on_press : app.toggle_steps(False)
+            ToggleButton :
+                text : 'Marches'
+                group : 'steps'
+                on_press : app.toggle_steps(True)
 
     Controller :
         id : controller
-    Label :
-        text : '[b][color=ff0000]SECURITE ACTIVE[/color][/b]' if app.any_safety else ''
-        font_size : 24
-        size_hint_y : 0.1
-        size_hint_x : 1
-        halign : 'center'
-        valign : 'center'
-        text_size : self.size
-        markup : True
+    
+    BoxLayout : 
+        size_hint_y : 0.2
+        orientation : 'vertical'
+        padding : [0,20,0,20]
+        spacing : 20
+        canvas.before:
+            Color:
+                rgba: (204/255, 82/255, 0/255,1) if app.any_safety else (0, 0, 0, 1)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        Label :
+            text : 'Status des sécurités'
+            font_size : 24
+            markup : True
+
+        Status :
+            id : status
+    
 
 
