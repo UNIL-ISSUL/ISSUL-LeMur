@@ -270,32 +270,36 @@ class LeMurApp(App):
         self.last_time = time.time()
 
     def start(self) :
-        self.running_event = Clock.schedule_interval(self.update_running,0.1)
         stop_widget = self.root.ids['controller'].ids['stop']
         start_widget = self.root.ids['controller'].ids['start']
-        if start_widget.state == 'normal' :
+        if start_widget.state == 'down' :
+            self.running_event = Clock.schedule_interval(self.update_running,0.1)
             stop_widget.state = 'normal'
             start_widget.state = 'down'
-        self.start_time = time.time()
-        self.last_time = time.time()
-        self.elapsed_time = 0
-        self.elapsed_distance = 0
-        self.elapsed_elevation = 0
-        if self.revpi :
-            self.revpi.start_belt()
+            self.start_time = time.time()
+            self.last_time = time.time()
+            self.elapsed_time = 0
+            self.elapsed_distance = 0
+            self.elapsed_elevation = 0
+            if self.revpi :
+                self.revpi.start_belt()
+        else :
+            start_widget.state = 'down'
         #if self.root.ids['ramp'].state :
         #    self.event_ramp = Clock.schedule_interval(self.update_ramp,self.root.ids['ramp'].step_duration_s)
     
     def stop(self) :
         stop_widget = self.root.ids['controller'].ids['stop']
         start_widget = self.root.ids['controller'].ids['start']
-        if stop_widget.state == 'normal' :
+        if stop_widget.state == 'down' :
             stop_widget.state = 'down'
             start_widget.state = 'normal'
-        if self.revpi :
-            self.revpi.stop_belt()
-        if self.running_event :
-            self.running_event.cancel()
+            if self.revpi :
+                self.revpi.stop_belt()
+            if self.running_event :
+                self.running_event.cancel()
+        else :
+            stop_widget.state = 'down'
         #if self.root.ids['ramp'].state :
         #    if self.event_ramp : 
         #        self.event_ramp.cancel()
