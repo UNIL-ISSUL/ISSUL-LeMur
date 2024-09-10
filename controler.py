@@ -34,6 +34,9 @@ def split_value(value) :
 
 class revPI() :
 
+    #define running state
+    running = False
+
     def __init__(self) -> None:
         #define RevPiModIO instance
         self.rpi = revpimodio2.RevPiModIO(autorefresh=True)
@@ -44,6 +47,7 @@ class revPI() :
         self.rpi.io.belt_stop.value=1
         self.rpi.io.belt_start.value=0
         self.rpi.io.belt_dir.value=1
+        self.running = False
         #set current speed to 
         
         #set lift default value
@@ -95,12 +99,18 @@ class revPI() :
             self.rpi.io.pid_enable.value = self.rpi.io.pid_enable.value & ~(1 << index)
 
     def start_belt(self,msg="") :
-        print('START belt','reason :',msg)
-        self.rpi.io.belt_start.value=1
+        #start only if belt is not running
+        if not self.running :
+            self.rpi.io.belt_start.value = 1
+            self.running = True
+            print('START belt','reason :',msg)
 
     def stop_belt(self,msg="") :
-        print('STOP belt','reason :',msg)
-        self.rpi.io.belt_stop.value=0
+        #stop only if belt is running
+        if self.running :
+            self.rpi.io.belt_stop.value=0
+            self.running = False
+            print('STOP belt','reason :',msg)
 
     #set belt speed to controller via modbus
     def set_belt_speed(self,Vkmh, steps = False) :
