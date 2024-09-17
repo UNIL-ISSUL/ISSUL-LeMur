@@ -126,8 +126,12 @@ class revPI() :
     def set_belt_speed(self,angle,v_kmh,weight, steps = False) :
         if steps :
             Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
+            if Hz is np.nan :
+                Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='nearest')
         else :
             Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
+            if Hz is np.nan :
+                Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='nearest') 
         if Hz is np.nan :
             print("error : speed calibration not found")
         value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision

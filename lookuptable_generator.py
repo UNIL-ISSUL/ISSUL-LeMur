@@ -20,11 +20,11 @@ print("frequency 26 @80kg:",griddata(points_marches, values_marches, (26, 1.82, 
 print("frequency 30 @80kg:",griddata(points_marches, values_marches, (30, 1.60, 80), method='linear'))
 print("frequency 38 @80kg:",griddata(points_marches, values_marches, (30, 1.3, 80), method='linear'))
 
-print("frequency 18 @50kg:",griddata(points_marches, values_marches, (18, 2.59, 70), method='linear'))
-print("frequency 22 @50kg:",griddata(points_marches, values_marches, (22, 2.14, 65), method='linear'))
-print("frequency 26 @50kg:",griddata(points_marches, values_marches, (26, 1.82, 65), method='linear'))
-print("frequency 30 @50kg:",griddata(points_marches, values_marches, (30, 1.60, 65), method='linear'))
-print("frequency 38 @50kg:",griddata(points_marches, values_marches, (30, 1.3, 65), method='linear'))
+print("frequency 18 @60kg:",griddata(points_marches, values_marches, (18, 2.59, 60), method='linear'))
+print("frequency 22 @60kg:",griddata(points_marches, values_marches, (22, 2.14, 60), method='linear'))
+print("frequency 26 @60kg:",griddata(points_marches, values_marches, (26, 1.82, 60), method='linear'))
+print("frequency 30 @60kg:",griddata(points_marches, values_marches, (30, 1.60, 60), method='linear'))
+print("frequency 38 @60kg:",griddata(points_marches, values_marches, (30, 1.3, 60), method='linear'))
 
 print("time :",(time.time()-time_0)/1000,' ms')
 
@@ -36,10 +36,10 @@ plt.imshow(freq_marches[:,:,30-1].T, extent=(15,40,1,3), origin='lower')
 args=np.argwhere(points_marches[:,2]==80)[:,0]
 plt.plot(points_marches[args,0], points_marches[args,1], 'k.', ms=1)
 
-plt.figure("Marches @ 30°")
-plt.imshow(freq_marches[120,:,:].T, extent=(0,5,40,100), origin='lower')
-args=np.argwhere(points_marches[:,0]==30)[:,0]
-plt.plot(points_marches[args,1], points_marches[args,2], 'k.', ms=1)
+plt.figure("Marches @ 50kg")
+plt.imshow(freq_marches[:,:,10-1].T, extent=(15,40,1,3), origin='lower')
+args=np.argwhere(points_marches[:,2]==50)[:,0]
+plt.plot(points_marches[args,0], points_marches[args,1], 'k.', ms=1)
 
 #points_bandes = np.array([[18,2.61,50],[18,2.62,80],[30,1.65,50],[30,1.68,80],[38,1.36,50],[38,1.4,80]])
 #values_bandes = np.array([6.48,6.48,4,4,3.25,3.25])
@@ -52,11 +52,11 @@ print("frequency 26 @80kg:",griddata(points_bandes, values_bandes, (26, 1.82, 80
 print("frequency 30 @80kg:",griddata(points_bandes, values_bandes, (30, 1.60, 80), method='linear'))
 print("frequency 38 @80kg:",griddata(points_bandes, values_bandes, (30, 1.3, 80), method='linear'))
 
-print("frequency 18 @50kg:",griddata(points_bandes, values_bandes, (18, 2.59, 50), method='linear'))
-print("frequency 22 @50kg:",griddata(points_bandes, values_bandes, (22, 2.14, 50), method='linear'))
-print("frequency 26 @50kg:",griddata(points_bandes, values_bandes, (26, 1.82, 50), method='linear'))
-print("frequency 30 @50kg:",griddata(points_bandes, values_bandes, (30, 1.60, 50), method='linear'))
-print("frequency 38 @50kg:",griddata(points_bandes, values_bandes, (30, 1.3, 50), method='linear'))
+print("frequency 18 @60kg:",griddata(points_bandes, values_bandes, (18, 2.59, 60), method='linear'))
+print("frequency 22 @60kg:",griddata(points_bandes, values_bandes, (22, 2.14, 60), method='linear'))
+print("frequency 26 @60kg:",griddata(points_bandes, values_bandes, (26, 1.82, 60), method='linear'))
+print("frequency 30 @60kg:",griddata(points_bandes, values_bandes, (30, 1.60, 60), method='linear'))
+print("frequency 38 @60kg:",griddata(points_bandes, values_bandes, (30, 1.3, 60), method='linear'))
 
 #freq_bandes = griddata(points_bandes, values_bandes, (grid_x, grid_y, grid_z), method='linear')
 #plt.figure("Bandes")
