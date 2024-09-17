@@ -151,7 +151,7 @@ class LeMurApp(App):
     belt_speed_value = NumericProperty(0)
     tilt_target = NumericProperty(27.5)
     tilt_value = NumericProperty(0)
-    subject_weight = StringProperty("70")
+    subject_weight = StringProperty("80")
     vertical_speed_target = NumericProperty(1000)
     vertical_speed_value = NumericProperty()
     elapsed_time = NumericProperty(0)
