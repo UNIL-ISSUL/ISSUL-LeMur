@@ -14,11 +14,18 @@ values_marches = np.loadtxt('speed_calib_steps.txt', delimiter='\t',skiprows=2,u
 grid_x, grid_y, grid_z = np.mgrid[18:38:200j, 1:3:200j, 50:80:30j]
 
 time_0 = time.time()
-print("frequency 18:",griddata(points_marches, values_marches, (18, 2.59, 80), method='linear'))
-print("frequency 22:",griddata(points_marches, values_marches, (22, 2.14, 80), method='linear'))
-print("frequency 26:",griddata(points_marches, values_marches, (26, 1.82, 80), method='linear'))
-print("frequency 30:",griddata(points_marches, values_marches, (30, 1.60, 80), method='linear'))
-print("frequency 38:",griddata(points_marches, values_marches, (30, 1.3, 80), method='linear'))
+print("frequency 18 @80kg:",griddata(points_marches, values_marches, (18, 2.59, 80), method='linear'))
+print("frequency 22 @80kg:",griddata(points_marches, values_marches, (22, 2.14, 80), method='linear'))
+print("frequency 26 @80kg:",griddata(points_marches, values_marches, (26, 1.82, 80), method='linear'))
+print("frequency 30 @80kg:",griddata(points_marches, values_marches, (30, 1.60, 80), method='linear'))
+print("frequency 38 @80kg:",griddata(points_marches, values_marches, (30, 1.3, 80), method='linear'))
+
+print("frequency 18 @50kg:",griddata(points_marches, values_marches, (18, 2.59, 70), method='linear'))
+print("frequency 22 @50kg:",griddata(points_marches, values_marches, (22, 2.14, 65), method='linear'))
+print("frequency 26 @50kg:",griddata(points_marches, values_marches, (26, 1.82, 65), method='linear'))
+print("frequency 30 @50kg:",griddata(points_marches, values_marches, (30, 1.60, 65), method='linear'))
+print("frequency 38 @50kg:",griddata(points_marches, values_marches, (30, 1.3, 65), method='linear'))
+
 print("time :",(time.time()-time_0)/1000,' ms')
 
 import matplotlib.pyplot as plt
@@ -39,11 +46,17 @@ plt.plot(points_marches[args,1], points_marches[args,2], 'k.', ms=1)
 points_bandes = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(1,2,3)) 
 values_bandes = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(0))
 
-print("frequency 18:",griddata(points_bandes, values_bandes, (18, 2.59, 80), method='linear'))
-print("frequency 22:",griddata(points_bandes, values_bandes, (22, 2.14, 80), method='linear'))
-print("frequency 26:",griddata(points_bandes, values_bandes, (26, 1.82, 80), method='linear'))
-print("frequency 30:",griddata(points_bandes, values_bandes, (30, 1.60, 80), method='linear'))
-print("frequency 38:",griddata(points_bandes, values_bandes, (30, 1.3, 80), method='linear'))
+print("frequency 18 @80kg:",griddata(points_bandes, values_bandes, (18, 2.59, 80), method='linear'))
+print("frequency 22 @80kg:",griddata(points_bandes, values_bandes, (22, 2.14, 80), method='linear'))
+print("frequency 26 @80kg:",griddata(points_bandes, values_bandes, (26, 1.82, 80), method='linear'))
+print("frequency 30 @80kg:",griddata(points_bandes, values_bandes, (30, 1.60, 80), method='linear'))
+print("frequency 38 @80kg:",griddata(points_bandes, values_bandes, (30, 1.3, 80), method='linear'))
+
+print("frequency 18 @50kg:",griddata(points_bandes, values_bandes, (18, 2.59, 50), method='linear'))
+print("frequency 22 @50kg:",griddata(points_bandes, values_bandes, (22, 2.14, 50), method='linear'))
+print("frequency 26 @50kg:",griddata(points_bandes, values_bandes, (26, 1.82, 50), method='linear'))
+print("frequency 30 @50kg:",griddata(points_bandes, values_bandes, (30, 1.60, 50), method='linear'))
+print("frequency 38 @50kg:",griddata(points_bandes, values_bandes, (30, 1.3, 50), method='linear'))
 
 #freq_bandes = griddata(points_bandes, values_bandes, (grid_x, grid_y, grid_z), method='linear')
 #plt.figure("Bandes")
