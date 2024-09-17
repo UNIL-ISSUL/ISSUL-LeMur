@@ -44,7 +44,7 @@ class revPI() :
         #define RevPiModIO instance
         self.rpi = revpimodio2.RevPiModIO(autorefresh=True)
         #reduce cylce time to 10Hz
-        self.rpi.cycletime = 500
+        self.rpi.cycletime = 200
         
         #set belt default value
         self.rpi.io.belt_stop.value=1
