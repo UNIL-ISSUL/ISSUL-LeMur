@@ -273,8 +273,8 @@ class LeMurApp(App):
         self.last_time = time.time()
     
     def update_weight(self,instance) :
-        weight = float(instance.text)
-        Logger.info("Weight updated : " + str(weight))
+        self.subject_weight = instance.value
+        Logger.info("Weight updated : " + str(self.subject_weight))
         self.change_belt_speed()
 
     def start(self) :

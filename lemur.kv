@@ -224,22 +224,19 @@ BoxLayout :
             text : 'Poids du sujet'
             font_size : 24
             #text_size: self.size
+            #size_hint_x : 0.1
             #halign: 'right'
         Slider :
+            #size_hint_x : 0.8
             step : 1
+            min : 50
+            max : 100
             value : app.subject_weight
-        TextInput :
-            id : weight
-            text : app.subject_weight
-            input_filter : 'float'
-            size_hint_x : 0.1
-            multiline : False
-            on_text : app.update_weight(self)
+            on_value : app.update_weight(self)
         Label :
-            text : 'kg'
+            text : str(app.subject_weight) + ' kg'
             font_size : 24
-            text_size: self.size
-            halign: 'left'
+            #text_size: self.size
             
     Label :
         text : 'Controle de la vitesse verticale :'
