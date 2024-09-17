@@ -205,7 +205,7 @@ class LeMurApp(App):
     def change_belt_speed(self,_=None) :
         Logger.info("belt speed target updated : " + str(self.belt_speed_target))
         if self.revpi :
-            self.revpi.set_belt_speed(self.tilt_value,self.belt_speed_target,float(self.subject_weight),self.steps_active)
+            self.revpi.set_belt_speed(self.tilt_value,self.belt_speed_target,self.subject_weight,self.steps_active)
         else :
             self.belt_speed_value = self.belt_speed_target
     
