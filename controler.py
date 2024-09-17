@@ -126,11 +126,8 @@ class revPI() :
     def set_belt_speed(self,angle,v_kmh,weight, steps = False) :
         if steps :
             Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
-            Hz = v_kmh * config['CONV_STEPS2HZ']
-
         else :
             Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
-            Hz = v_kmh * config['CONV_BELT2HZ']
         if Hz is np.nan :
             print("error : speed calibration not found")
         Hz = float(Hz)
