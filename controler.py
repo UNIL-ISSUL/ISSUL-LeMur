@@ -6,6 +6,8 @@ def is_raspberry_pi() -> bool:
 import revpimodio2
 from threading import Thread
 from pathlib import Path
+import numpy as np
+from scipy.interpolate import griddata
 #READ CONFIGURATION FILE
 import yaml
 try:
@@ -36,6 +38,7 @@ class revPI() :
 
     #define running state
     running = False
+    freq_2_speed = 0.4
 
     def __init__(self) -> None:
         #define RevPiModIO instance
@@ -63,6 +66,13 @@ class revPI() :
         self.rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
         #close the program properly
         self.rpi.handlesignalend(cleanupfunc=self.stop_all)
+
+        #read speed calibrations files
+        self.speed_points_belt = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(1,2,3)) 
+        self.speed_values_belt = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(0))
+        self.speed_points_steps = np.loadtxt('speed_calib_steps.txt', delimiter='\t',skiprows=2,usecols=(1,2,3))
+        self.speed_values_steps = np.loadtxt('speed_calib_steps.txt', delimiter='\t',skiprows=2,usecols=(0))
+
     
     def mainloop(self) :
         self.rpi.mainloop(blocking=False)
@@ -113,12 +123,15 @@ class revPI() :
             print('STOP belt','reason :',msg)
 
     #set belt speed to controller via modbus
-    def set_belt_speed(self,Vkmh, steps = False) :
+    def set_belt_speed(self,angle,v_kmh,weight, steps = False) :
         if steps :
-            Hz = Vkmh * config['CONV_STEPS2HZ']
+            Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
         else :
-            Hz = Vkmh *  config['CONV_BELT2HZ']
+            Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
+        if Hz is np.nan :
+            print("error : speed calibration not found")
         value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
+        self.freq_2_speed = v_kmh / Hz
         Logger.info("belt frequency updated : " + str(value))
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
     
@@ -127,10 +140,7 @@ class revPI() :
         #read modbus value in hundred of m/s
         value = merge_registers(self.rpi.io.belt_speed_current_0.value,self.rpi.io.belt_speed_current_1.value)
         value = 1.0 * value / 100
-        if steps :
-            return value * config['CONV_HZ2STEPS']
-        else :
-            return value * config['CONV_HZ2BELT']
+        return value * self.freq_2_speed
         #return value in km/h
         return value
 

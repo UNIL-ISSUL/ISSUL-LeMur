@@ -151,6 +151,7 @@ class LeMurApp(App):
     belt_speed_value = NumericProperty(0)
     tilt_target = NumericProperty(27.5)
     tilt_value = NumericProperty(0)
+    subject_weight = StringProperty("70")
     vertical_speed_target = NumericProperty(1000)
     vertical_speed_value = NumericProperty()
     elapsed_time = NumericProperty(0)
@@ -197,12 +198,14 @@ class LeMurApp(App):
             self.revpi.set_lift_angle(self.tilt_target)
         else :
             self.tilt_value = self.tilt_target
+        
+        self.change_belt_speed()
             
     
     def change_belt_speed(self,_=None) :
         Logger.info("belt speed target updated : " + str(self.belt_speed_target))
         if self.revpi :
-            self.revpi.set_belt_speed(self.belt_speed_target,self.steps_active)
+            self.revpi.set_belt_speed(self.tilt_value,self.belt_speed_target,float(self.subject_weight),self.steps_active)
         else :
             self.belt_speed_value = self.belt_speed_target
     
@@ -268,6 +271,11 @@ class LeMurApp(App):
         self.elapsed_distance += (self.belt_speed_value * 1000 / 3600) * delta_t
         self.elapsed_elevation += (self.vertical_speed_value / 3600) * delta_t
         self.last_time = time.time()
+    
+    def update_weight(self,instance) :
+        weight = float(instance.text)
+        Logger.info("Weight updated : " + str(weight))
+        self.change_belt_speed()
 
     def start(self) :
         stop_widget = self.root.ids['controller'].ids['stop']
@@ -411,7 +419,7 @@ class LeMurApp(App):
             self.tilt_target = tilt_target
             #move if applicable
             if self.root.ids['vertical_speed'].auto_update or manual:
-                self.move_lift()        
+                self.move_lift()   
     
     def mode_changed(self,instance) :
         if instance.state == 'down' :

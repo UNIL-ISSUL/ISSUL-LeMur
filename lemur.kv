@@ -216,6 +216,28 @@ BoxLayout :
     spacing : 10
     id : main
 
+    BoxLayout : 
+        orientation : 'horizontal'
+        size_hint_y : 0.1
+        spacing : 10
+        Label :
+            text : 'Poids du sujet'
+            font_size : 24
+            #text_size: self.size
+            #halign: 'right'
+        TextInput :
+            id : weight
+            text : app.subject_weight
+            input_filter : 'float'
+            size_hint_x : 0.1
+            multiline : False
+            on_text : app.update_weight(self)
+        Label :
+            text : 'kg'
+            font_size : 24
+            text_size: self.size
+            halign: 'left'
+            
     Label :
         text : 'Controle de la vitesse verticale :'
         size_hint_y : 0.1
