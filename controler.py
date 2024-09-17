@@ -7,6 +7,7 @@ import revpimodio2
 from threading import Thread
 from pathlib import Path
 import numpy as np
+import math
 from scipy.interpolate import griddata
 #READ CONFIGURATION FILE
 import yaml
@@ -126,14 +127,15 @@ class revPI() :
     def set_belt_speed(self,angle,v_kmh,weight, steps = False) :
         if steps :
             Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
-            if Hz is np.nan :
+            if math.isnan(Hz) :
                 Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='nearest')
         else :
             Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
-            if Hz is np.nan :
+            if math.isnan(Hz) :
                 Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
-        if Hz is np.nan :
+        if math.isnan(Hz) :
             print("error : speed calibration not found")
+            return
         Hz = float(Hz)
         value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
         self.freq_2_speed = v_kmh / Hz
