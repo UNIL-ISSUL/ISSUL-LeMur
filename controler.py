@@ -44,7 +44,7 @@ class revPI() :
         #define RevPiModIO instance
         self.rpi = revpimodio2.RevPiModIO(autorefresh=True)
         #reduce cylce time to 10Hz
-        self.rpi.cycletime = 200
+        self.rpi.cycletime = 300
         
         #set belt default value
         self.rpi.io.belt_stop.value=1
@@ -126,10 +126,14 @@ class revPI() :
     def set_belt_speed(self,angle,v_kmh,weight, steps = False) :
         if steps :
             Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
+            Hz = v_kmh * config['CONV_STEPS2HZ']
+
         else :
             Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
+            Hz = v_kmh * config['CONV_BELT2HZ']
         if Hz is np.nan :
             print("error : speed calibration not found")
+        Hz = float(Hz)
         value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
         self.freq_2_speed = v_kmh / Hz
         Logger.info("belt frequency updated : " + str(value))
