@@ -213,10 +213,11 @@ class LeMurApp(App):
         if self.revpi :
             if not self.revpi.set_belt_speed(self.tilt_value,self.belt_speed_target,self.subject_weight,self.steps_active) :
                 #open pop up in kivy with warning message
+                if isinstance(App.get_running_app().root_window.children[0], Popup):
+                    App.get_running_app().root_window.children[0].dismiss()
                 popup.open()
         else :
             self.belt_speed_value = self.belt_speed_target
-            popup.open()  
     
     def toggle_steps(self,active) :
         color = [0, 0, 0]
