@@ -129,17 +129,23 @@ class revPI() :
             Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
             if math.isnan(Hz) :
                 Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='nearest')
+                Logger.info("nearest value used for steps speed")
+            else :
+                Logger.info("linear value used for steps speed")
         else :
             Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
             if math.isnan(Hz) :
-                Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
+                Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='nearest')
+                Logger.info("nearest value used for belt speed")
+            else :
+                Logger.info("linear value used for belt speed")
         if math.isnan(Hz) :
-            print("error : speed calibration not found")
+            Logger.warning("no value found for speed")
             return
         Hz = float(Hz)
         value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
         self.freq_2_speed = v_kmh / Hz
-        Logger.info("belt frequency updated : " + str(value))
+        Logger.info("belt frequency updated : " + str(value/100))
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
     
     #return belt spped in km/h
