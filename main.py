@@ -13,6 +13,8 @@ from kivy.core.window import Window
 from kivy.uix.accordion import Accordion, AccordionItem
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.popup import Popup
+from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.garden.led import Led
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
@@ -204,10 +206,17 @@ class LeMurApp(App):
     
     def change_belt_speed(self,_=None) :
         Logger.info("belt speed target updated : " + str(self.belt_speed_target))
+        content = Button(text='Speed out of calibration, nearest value choosen (poor precision)\n\nclick to close')
+        popup = Popup(title='WARNING', content=content,size_hint=(None, None), size=(500, 200),auto_dismiss=False)
+        content.bind(on_press=popup.dismiss)
+
         if self.revpi :
-            self.revpi.set_belt_speed(self.tilt_value,self.belt_speed_target,self.subject_weight,self.steps_active)
+            if not self.revpi.set_belt_speed(self.tilt_value,self.belt_speed_target,self.subject_weight,self.steps_active) :
+                #open pop up in kivy with warning message
+                popup.open()
         else :
             self.belt_speed_value = self.belt_speed_target
+            popup.open()  
     
     def toggle_steps(self,active) :
         color = [0, 0, 0]

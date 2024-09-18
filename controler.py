@@ -141,12 +141,13 @@ class revPI() :
                 Logger.info("linear value used for belt speed")
         if math.isnan(Hz) :
             Logger.warning("no value found for speed")
-            return
+            return False
         Hz = float(Hz)
         value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
         self.freq_2_speed = v_kmh / Hz
         Logger.info("belt frequency updated : " + str(value/100))
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
+        return True
     
     #return belt spped in km/h
     def get_belt_speed(self, steps = False) :
