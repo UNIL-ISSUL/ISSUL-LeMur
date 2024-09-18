@@ -273,6 +273,9 @@ class LeMurApp(App):
         else :
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             self.any_safety = False
+        
+        #update speed target
+        self.change_belt_speed()
     
     def update_running(self,_) :
 
