@@ -21,7 +21,7 @@ freq_marches_nearest = griddata(points_marches, values_marches, (grid_x, grid_y,
 freq_marches_linear = griddata(points_marches, values_marches, (grid_x, grid_y, grid_z), method='linear')
 
 plt.figure("Marches @ 80kg")
-#plt.imshow(freq_marches_nearest[:,:,30-1].T, extent=(16,40,1,3.5), origin='lower')
+plt.imshow(freq_marches_nearest[:,:,30-1].T, extent=(18,38,1,3.5), origin='lower',aspect='auto')
 plt.imshow(freq_marches_linear[:,:,30-1].T, extent=(18,38,1,3.5), origin='lower',aspect='auto')
 plt.axis([16,40,1,3.5])
 args=np.argwhere(points_marches[:,2]==80)[:,0]
@@ -29,7 +29,7 @@ plt.plot(points_marches[args,0], points_marches[args,1], 'k.', ms=6)
 plt.plot(points_etude[:,0], points_etude[:,1], 'r.', ms=6)
 
 plt.figure("Marches @ 50kg")
-#plt.imshow(freq_marches_nearest[:,:,10-1].T, extent=(15,40,1,3.5), origin='lower')
+plt.imshow(freq_marches_nearest[:,:,10-1].T, extent=(18,38,1,3.5), origin='lower',aspect='auto')
 plt.imshow(freq_marches_linear[:,:,10-1].T, extent=(18,38,1,3.5), origin='lower',aspect='auto')
 plt.axis([16,40,1,3.5])
 args=np.argwhere(points_marches[:,2]==50)[:,0]
@@ -41,10 +41,10 @@ plt.plot(points_etude[:,0], points_etude[:,1], 'r.', ms=6)
 points_bandes = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(1,2,3)) 
 values_bandes = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(0))
 
-#freq_bandes_nearest = griddata(points_bandes, values_bandes, (grid_x, grid_y, grid_z), method='nearest')
+freq_bandes_nearest = griddata(points_bandes, values_bandes, (grid_x, grid_y, grid_z), method='nearest')
 freq_bandes_linear = griddata(points_bandes, values_bandes, (grid_x, grid_y, grid_z), method='linear')
 plt.figure("Bandes @80kg")
-#plt.imshow(freq_bandes_nearest[:,:,30-1].T, extent=(18,40,1,3.5), origin='lower')
+plt.imshow(freq_bandes_nearest[:,:,30-1].T, extent=(18,38,1,3.5), origin='lower',aspect='auto')
 plt.imshow(freq_bandes_linear[:,:,30-1].T, extent=(18,38,1,3.5), origin='lower',aspect='auto')
 plt.axis([16,40,1,3.5])
 args=np.argwhere(points_bandes[:,2]==80)[:,0]
@@ -52,7 +52,7 @@ plt.plot(points_bandes[args,0], points_bandes[args,1], 'k.', ms=6)
 plt.plot(points_etude[:,0], points_etude[:,1], 'r.', ms=6)
 
 plt.figure("Bandes @50kg")
-#plt.imshow(freq_bandes_nearest[:,:,10-1].T, extent=(18,38,1,3.5), origin='lower')
+plt.imshow(freq_bandes_nearest[:,:,10-1].T, extent=(18,38,1,3.5), origin='lower',aspect='auto')
 plt.imshow(freq_bandes_linear[:,:,10-1].T, extent=(18,38,1,3.5), origin='lower',aspect='auto')
 #increase vertical axis length
 plt.axis([16,40,1,3.5])
@@ -61,11 +61,11 @@ plt.plot(points_bandes[args,0], points_bandes[args,1], 'k.', ms=6)
 plt.plot(points_etude[:,0], points_etude[:,1], 'r.', ms=6)
 
 for mode in ["belt ","steps"] :
-    for weight in [50,80] :
+    for weight in [72] :
         for point in points_etude :
             if mode == "belt " :
-                print('On',mode,"@",weight,"kg","angle:",point[0],"speed:",point[1],"frequency:",griddata(points_bandes, values_bandes, (point[0], point[1], weight), method='linear'))
+                print('On',mode,"@",weight,"kg","angle:",point[0],"speed:",point[1],"frequency:",format(griddata(points_bandes, values_bandes, (point[0], point[1], weight), method='linear'),'.2f'))
             else :
-                print('On',mode,"@",weight,"kg","angle:",point[0],"speed:",point[1],"frequency:",griddata(points_marches, values_marches, (point[0], point[1], weight), method='linear'))
+                print('On',mode,"@",weight,"kg","angle:",point[0],"speed:",point[1],"frequency:",format(griddata(points_marches, values_marches, (point[0], point[1], weight), method='linear'),'.2f'))
 
 plt.show()
