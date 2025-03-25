@@ -231,6 +231,7 @@ class LeMurApp(App):
         #update belt speed according to new status
         self.steps_active = active
         self.change_belt_speed()
+
         #change background color
         #with self.root.ids['steps_grid'].canvas.before:
         #    Color(color[0], color[1], color[2], 1)
@@ -270,6 +271,8 @@ class LeMurApp(App):
             self.tilt_value = self.revpi.get_lift_angle()
             self.belt_speed_value = self.revpi.get_belt_speed(self.steps_active)
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
+            #modbus status
+            self.revpi.io.use_steps.value = self.steps_active
         else :
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             self.any_safety = False
