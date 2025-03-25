@@ -125,26 +125,26 @@ class revPI() :
 
     #set belt speed to controller via modbus
     def set_belt_speed(self,angle,v_kmh,weight, steps = False) :
-        if steps :
-            Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
-            if math.isnan(Hz) :
-                Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='nearest')
-                Logger.info("nearest value used for steps speed")
-            else :
-                Logger.info("linear value used for steps speed")
-        else :
-            Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
-            if math.isnan(Hz) :
-                Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='nearest')
-                Logger.info("nearest value used for belt speed")
-            else :
-                Logger.info("linear value used for belt speed")
-        if math.isnan(Hz) :
-            Logger.warning("no value found for speed")
-            return False
-        Hz = float(Hz)
-        value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
-        value = round(10000 / 40)    #100.00Hz for 0km/h
+        # if steps :
+        #     Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
+        #     if math.isnan(Hz) :
+        #         Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='nearest')
+        #         Logger.info("nearest value used for steps speed")
+        #     else :
+        #         Logger.info("linear value used for steps speed")
+        # else :
+        #     Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
+        #     if math.isnan(Hz) :
+        #         Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='nearest')
+        #         Logger.info("nearest value used for belt speed")
+        #     else :
+        #         Logger.info("linear value used for belt speed")
+        # if math.isnan(Hz) :
+        #     Logger.warning("no value found for speed")
+        #     return False
+        # Hz = float(Hz)
+        # value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
+        value = round(10000 / 40)    #100.00Hz for 40km/h
         #self.freq_2_speed = v_kmh / Hz
         Logger.info("belt frequency updated : " + str(value/100))
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
