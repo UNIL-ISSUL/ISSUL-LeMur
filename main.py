@@ -272,7 +272,7 @@ class LeMurApp(App):
             self.belt_speed_value = self.revpi.get_belt_speed(self.steps_active)
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             #modbus status
-            self.revpi.io.use_steps.value = self.steps_active
+            self.revpi.rpi.io.use_steps.value = self.steps_active
         else :
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             self.any_safety = False
