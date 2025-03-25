@@ -144,7 +144,7 @@ class revPI() :
         #     return False
         # Hz = float(Hz)
         # value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
-        value = round(10000 / 40)    #100.00Hz for 40km/h
+        value = round(v_kmh*10000 / 40)    #100.00Hz for 40km/h
         #self.freq_2_speed = v_kmh / Hz
         Logger.info("belt frequency updated : " + str(value/100))
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
