@@ -35,6 +35,7 @@ def split_value(value) :
     value_lsb = value & 0xFFFF
     return value_hsb, value_lsb
 
+#add a function if encoder are active to acitvate PID of VFD 
 class revPI() :
 
     #define running state
