@@ -123,7 +123,7 @@ class revPI() :
             self.rpi.io.belt_stop.value=0
             self.running = False
             print('STOP belt','reason :',msg)
-
+        
     #set belt speed to controller via modbus
     def set_belt_speed(self,v_kmh) :
         # if steps :

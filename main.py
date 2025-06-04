@@ -200,8 +200,6 @@ class LeMurApp(App):
             self.revpi.set_lift_angle(self.tilt_target)
         else :
             self.tilt_value = self.tilt_target
-        
-        self.change_belt_speed()
             
     
     def change_belt_speed(self,_=None) :
@@ -230,7 +228,6 @@ class LeMurApp(App):
 
         #update belt speed according to new status
         self.steps_active = active
-        self.change_belt_speed()
 
         #change background color
         #with self.root.ids['steps_grid'].canvas.before:
@@ -272,7 +269,8 @@ class LeMurApp(App):
             self.belt_speed_value = self.revpi.get_belt_speed(self.steps_active)
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             #modbus status
-            self.revpi.rpi.io.use_steps.value = self.steps_active
+            self.revpi.rpi.io.use_steps.value = self.steps_active   #send steps status to modbus
+            #copy encoder feedback to VFD PID enable A071
         else :
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             self.any_safety = False
