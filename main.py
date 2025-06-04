@@ -153,7 +153,6 @@ class LeMurApp(App):
     belt_speed_value = NumericProperty(0)
     tilt_target = NumericProperty(27.5)
     tilt_value = NumericProperty(0)
-    subject_weight = NumericProperty(80)
     vertical_speed_target = NumericProperty(1000)
     vertical_speed_value = NumericProperty()
     elapsed_time = NumericProperty(0)
@@ -192,7 +191,8 @@ class LeMurApp(App):
 
     def on_stop(self):
         print('bye bye')
-        self.rpi.stop_all()
+        if self.revpi :
+            self.rpi.stop_all()
 
     def move_lift(self,_=None) :
         Logger.info("Tilt target updated : " + str(self.tilt_target))
@@ -211,7 +211,7 @@ class LeMurApp(App):
         content.bind(on_press=popup.dismiss)
 
         if self.revpi :
-            if not self.revpi.set_belt_speed(self.tilt_value,self.belt_speed_target,self.subject_weight,self.steps_active) :
+            if not self.revpi.set_belt_speed(self.belt_speed_target) :
                 #open pop up in kivy with warning message
                 if isinstance(App.get_running_app().root_window.children[0], Popup):
                     App.get_running_app().root_window.children[0].dismiss()
@@ -287,11 +287,6 @@ class LeMurApp(App):
         self.elapsed_distance += (self.belt_speed_value * 1000 / 3600) * delta_t
         self.elapsed_elevation += (self.vertical_speed_value / 3600) * delta_t
         self.last_time = time.time()
-    
-    def update_weight(self,instance) :
-        self.subject_weight = instance.value
-        Logger.info("Weight updated : " + str(self.subject_weight))
-        self.change_belt_speed()
 
     def start(self) :
         stop_widget = self.root.ids['controller'].ids['stop']

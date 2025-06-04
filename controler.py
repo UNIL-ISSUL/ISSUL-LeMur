@@ -125,7 +125,7 @@ class revPI() :
             print('STOP belt','reason :',msg)
 
     #set belt speed to controller via modbus
-    def set_belt_speed(self,angle,v_kmh,weight, steps = False) :
+    def set_belt_speed(self,v_kmh) :
         # if steps :
         #     Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
         #     if math.isnan(Hz) :
