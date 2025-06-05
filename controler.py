@@ -40,7 +40,7 @@ class revPI() :
 
     #define running state
     running = False
-    freq_2_speed = 0.4
+    freq_2_speed = 40/100  #40km/h for 100Hz
 
     def __init__(self) -> None:
         #define RevPiModIO instance
@@ -155,7 +155,7 @@ class revPI() :
     def get_belt_speed(self, steps = False) :
         #read modbus value in hundred of m/s
         value = merge_registers(self.rpi.io.belt_speed_current_0.value,self.rpi.io.belt_speed_current_1.value)
-        value = 1.0 * value / 100
+        value = 1.0 * value / 10 #d004 monitoring with 0.1 precision
         return value * self.freq_2_speed
         #return value in km/h
         return value
