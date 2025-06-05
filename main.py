@@ -271,10 +271,10 @@ class LeMurApp(App):
             #modbus status
             self.revpi.rpi.io.use_steps.value = self.steps_active   #send steps status to modbus
             #copy encoder feedback to VFD PID enable A071
-            if self.revpi.rpi.io.encoder_feedback.value :
-                self.revpi.rpi.io.belt_PID_enable.value = 1
-            else :
-                self.revpi.rpi.io.belt_PID_enable.value = 0
+            #if self.revpi.rpi.io.encoder_feedback.value :
+            #    self.revpi.rpi.io.belt_PID_enable.value = 1
+            #else :
+            #    self.revpi.rpi.io.belt_PID_enable.value = 0
         else :
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             self.any_safety = False
