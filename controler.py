@@ -6,12 +6,17 @@ def is_raspberry_pi() -> bool:
 import revpimodio2
 from threading import Thread
 from pathlib import Path
+import numpy as np
+import math
+from scipy.interpolate import griddata
 #READ CONFIGURATION FILE
 import yaml
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
+
+from kivy.logger import Logger
 
 def read_yaml(file_path):
     with open(file_path, "r") as f:
@@ -21,18 +26,33 @@ def read_yaml(file_path):
 file = Path(__file__)
 config = read_yaml(file.parent/'settings.yaml')
 
+def merge_registers(reg_hsb, reg_lsb) :
+    value = (reg_hsb << 16)  + reg_lsb
+    return value
+
+def split_value(value) :
+    value_hsb = value >> 16
+    value_lsb = value & 0xFFFF
+    return value_hsb, value_lsb
+
+#add a function if encoder are active to acitvate PID of VFD 
 class revPI() :
+
+    #define running state
+    running = False
+    freq_2_speed = 0.4  #40km/h for 100Hz
 
     def __init__(self) -> None:
         #define RevPiModIO instance
         self.rpi = revpimodio2.RevPiModIO(autorefresh=True)
         #reduce cylce time to 10Hz
-        self.rpi.cycletime = 100
+        self.rpi.cycletime = 300
         
         #set belt default value
         self.rpi.io.belt_stop.value=1
         self.rpi.io.belt_start.value=0
         self.rpi.io.belt_dir.value=1
+        self.running = False
         #set current speed to 
         
         #set lift default value
@@ -48,6 +68,13 @@ class revPI() :
         self.rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
         #close the program properly
         self.rpi.handlesignalend(cleanupfunc=self.stop_all)
+
+        #read speed calibrations files
+        self.speed_points_belt = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(1,2,3)) 
+        self.speed_values_belt = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(0))
+        self.speed_points_steps = np.loadtxt('speed_calib_steps.txt', delimiter='\t',skiprows=2,usecols=(1,2,3))
+        self.speed_values_steps = np.loadtxt('speed_calib_steps.txt', delimiter='\t',skiprows=2,usecols=(0))
+
     
     def mainloop(self) :
         self.rpi.mainloop(blocking=False)
@@ -84,23 +111,52 @@ class revPI() :
             self.rpi.io.pid_enable.value = self.rpi.io.pid_enable.value & ~(1 << index)
 
     def start_belt(self,msg="") :
-        print('START belt','reason :',msg)
-        self.rpi.io.belt_start.value=1
+        #start only if belt is not running
+        if not self.running :
+            self.rpi.io.belt_start.value = 1
+            self.running = True
+            print('START belt','reason :',msg)
 
     def stop_belt(self,msg="") :
-        print('STOP belt','reason :',msg)
-        self.rpi.io.belt_stop.value=0
-
+        #stop only if belt is running
+        if self.running :
+            self.rpi.io.belt_stop.value=0
+            self.running = False
+            print('STOP belt','reason :',msg)
+        
     #set belt speed to controller via modbus
-    def set_belt_speed(self,Vkmh) :
-        #Vms = Vkmh / 3.6 
-        value = round(Vkmh * 100) #int is sent to frequency inverter with 0.01 precision
-        self.rpi.io.belt_speed_SP.value = value
+    def set_belt_speed(self,v_kmh) :
+        # if steps :
+        #     Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
+        #     if math.isnan(Hz) :
+        #         Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='nearest')
+        #         Logger.info("nearest value used for steps speed")
+        #     else :
+        #         Logger.info("linear value used for steps speed")
+        # else :
+        #     Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
+        #     if math.isnan(Hz) :
+        #         Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='nearest')
+        #         Logger.info("nearest value used for belt speed")
+        #     else :
+        #         Logger.info("linear value used for belt speed")
+        # if math.isnan(Hz) :
+        #     Logger.warning("no value found for speed")
+        #     return False
+        # Hz = float(Hz)
+        # value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
+        value = round(v_kmh*10000 / 40)    #100.00Hz for 40km/h
+        #self.freq_2_speed = v_kmh / Hz
+        Logger.info("belt frequency updated : " + str(value/100))
+        self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
+        return True
     
     #return belt spped in km/h
-    def get_belt_speed(self) :
+    def get_belt_speed(self, steps = False) :
         #read modbus value in hundred of m/s
-        value = self.rpi.io.belt_speed_current.value / 100
+        value = merge_registers(self.rpi.io.belt_speed_current_0.value,self.rpi.io.belt_speed_current_1.value)
+        value = 1.0 * value / 10 #d004 with 0.1 precision
+        return value *3.6#* self.freq_2_speed convert m/s to km/h
         #return value in km/h
         return value
 

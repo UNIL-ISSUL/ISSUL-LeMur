@@ -1,55 +1,58 @@
 <NumericInput> :
     orientation : 'vertical'
-    BoxLayout : 
-        orientation : 'horizontal'
-        CheckBox : 
-            id : checkbox
-            group : 'disable'
-            active : root.locked
-            size_hint_x : 0.1
-            on_active : root.locked_changed(checkbox,self.active)
-            background_radio_normal : 'shapes/unlocked.png'
-            background_radio_down : 'shapes/locked.png'
-        Label :
-            text :root.name + ": " + "{:.1f}".format(root.value) + " " + root.unit
-            font_size : 24
+    Label :
+        text :root.name + " : " + "{:.2f}".format(root.value) + " / " + "{:.2f}".format(root.target) + " " + root.unit
+        font_size : 25
+        disabled : root.hidden
     Slider : 
-        disabled : checkbox.active or root.hidden
+        disabled : root.hidden
         min : root.min_value
         step : root.increment_list[1]
         max : root.max_value
-        value : root.value
+        value : root.target
         on_value : root.slider_change(self.value)
     BoxLayout :
         orientation : 'horizontal'
         BoxLayout :
             orientation : 'vertical'
             ToggleButton :
+                disabled : root.hidden
                 text : str(root.increment_list[0])
-                disabled : checkbox.active or root.hidden
                 group : root.name
                 on_press : root.set_increment(root.increment_list[0])
             ToggleButton : 
+                disabled : root.hidden
                 text : str(root.increment_list[1])
-                disabled : checkbox.active or root.hidden
                 group : root.name
                 state : 'down'
                 on_press : root.set_increment(root.increment_list[1])
             ToggleButton :
+                disabled : root.hidden
                 text : str(root.increment_list[2])
-                disabled : checkbox.active or root.hidden
                 group : root.name
                 on_press : root.set_increment(root.increment_list[2])
         BoxLayout :
             orientation:'vertical'
             Button :
+                disabled : root.hidden
                 text : '-'
-                disabled : checkbox.active or root.hidden
                 on_press : root.decrease()
             Button :
+                disabled : root.hidden
                 text : '+'
-                disabled : checkbox.active or root.hidden
                 on_press : root.increase()
+        BoxLayout :
+            orientation: 'vertical'
+            Button :
+                text : 'SET'
+                disabled : automatic_button.state == 'down' or root.hidden
+                on_press : app.update_targets(root,True)
+            ToggleButton :
+                disabled : root.hidden
+                id : automatic_button
+                state : 'down' if root.auto_update else 'normal'
+                text : 'Mode automatique' if self.state == 'down' else 'Mode manuel'
+                on_press : root.toggle_auto_update(automatic_button.state)
 
 <NumericInputCompact> :
     orientation : 'vertical'
@@ -71,21 +74,21 @@
 #:import timedelta datetime.timedelta
 
 <NumericDisplay>
-    text: root.name +' : '+ "{:.1f}".format(root.value) +' '+ root.unit
-    font_size : 24
+    text: root.name +' : '+ "{:.2f}".format(root.value) +' '+ root.unit if not root.has_target else root.name +' : '+ "{:.2f}".format(root.value) + ' / ' + "{:.2f}".format(root.target) + '  ' + root.unit  
+    font_size : 25
 
 <StatusDisplay>
     orientation : 'horizontal'
     spacing : 10
     Led :
-        size_hint_x : 0.1
+        #size_hint_x : 0.2
         source: 'shapes/basic_squarerounded.png'
         state : 'on' if root.active else 'off'
         id : led
     Label :
         text : root.name
         font_size : 18
-        text_size : self.size
+        #text_size : self.size
     	valign : 'center'
     	halign : 'left'
 
@@ -93,28 +96,34 @@
     cols : 2
     spacing : 10
     NumericDisplay :
-        name : 'Inclinaison'
+        name : 'inclinaison'
         unit : '°'
-        value : app.tilt_out
-    Button :
-        id : lift
-        text : 'Changer inclinaison'
-        on_press : app.move_lift(0)
-    NumericDisplay :
-        name : 'Vitesse'
-        unit : 'km/h'
-        value : app.belt_speed_out
+        value : app.tilt_value
+        target : app.tilt_target
+        has_target : True
     NumericDisplay :
         name : 'Distance'
         unit : 'm'
         value : app.elapsed_distance
+    NumericDisplay :
+        name : app.speed_text
+        unit : 'km/h'
+        value : app.belt_speed_value
+        target : app.belt_speed_target
+        has_target : True
     NumericDisplay
         name : 'Dénivelé'
         unit : 'm'
         value : app.elapsed_elevation
+    NumericDisplay :
+        name : 'Vitesse verticale'
+        unit : 'm/h'
+        value : app.vertical_speed_value
+        target : app.vertical_speed_target
+        has_target : True
     Label : 
         text : 'Durée : ' + str(timedelta(seconds=app.elapsed_time)).split('.', 2)[0]
-        font_size : 24
+        font_size : 25
     ToggleButton : 
         id : stop
         text : 'Stop'
@@ -127,8 +136,8 @@
         group : 'controller'
         on_press : app.start()
 
-<Status@GridLayout> :
-    cols : 2
+<Status@BoxLayout> :
+    orientation : 'horizontal'
     spacing : 10
     StatusDisplay :
         name : 'Sécurité gauche'
@@ -200,74 +209,126 @@
         Button :
             text : "Initialisation"
             on_press : app.init_ramp(start_speed.value)
-
-
-
-Accordion :
+#MAIN WINDOW
+BoxLayout :
     orientation : 'vertical'
-    AccordionItem :
-        title : 'Manual mode'
-        collapse: False
-        GridLayout :
-            cols :3
-            spacing : 100
-            padding : 100
-            
-            NumericInput :
-                id : tilt
-                value : app.tilt
-                on_value : app.update_parameters(tilt)
-                name : 'Inclinaison'
-                unit : '°'
-                min_value : 0
-                max_value : 85
-            
-            NumericInput :
-                id : belt_speed
-                value : app.belt_speed
-                on_value : app.update_parameters(belt_speed)
-                name : 'Vitesse tapis'
-                unit : 'km/h'
-                min_value : 0
-                max_value : 40
-            
-            NumericInput :
-                id : vertical_speed
-                value : app.vertical_speed
-                on_value : app.update_parameters(vertical_speed)
-                name : 'Vitesse ascentionelle'
-                unit : 'm/h'
-                locked : True
-                min_value : 0
-                max_value : 6000
-                increment_list : [10, 100, 500]
+    padding : 10
+    spacing : 10
+    id : main
 
-            Label :
-                text : 'Mode manuel'
-                font_size : 24
+    Label :
+        text : 'Controle de la vitesse verticale :'
+        size_hint_y : 0.1
+        font_size : 24
 
-            Controller :
-                id : controller
+    BoxLayout :
+        orientation : 'horizontal'
+        size_hint_y : 0.1
+        spacing : 10
+        ToggleButton :
+            text : 'Aucun'
+            group : 'vertical_speed'
+            state : 'down'
+            on_press : app.mode_changed(self)
+        ToggleButton :
+            text : 'Inclinaison'
+            group : 'vertical_speed'
+            on_press : app.mode_changed(self)
+        ToggleButton :
+            text : 'Vitesse tapis'
+            group : 'vertical_speed'
+            on_press : app.mode_changed(self)
 
-            Label :
-                text : 'Mode manuel'
-                font_size : 24
-    AccordionItem :
-        title : 'Automatic mode'
-        GridLayout :
-            cols : 1
-            spacing : 100
-            padding : 100
+    GridLayout :
+        cols :3
+        spacing : 10
+        padding : 0
 
-            Ramp :
-                id : ramp
-    AccordionItem :
-        title : 'Information'
-        GridLayout :
-            cols : 1
-            spacing : 100
-            padding : 100
-            Status :
-                id : status
+        NumericInput :
+            id : tilt
+            target : app.tilt_target
+            value : app.tilt_value
+            on_target : app.update_targets(tilt)
+            name : 'Inclinaison'
+            unit : '°'
+            min_value : 15   #limité par le l'axe des poulies des courroies
+            max_value : 40  #limité par le l'axe des poulies des courroies
+            auto_update : False
+        
+        NumericInput :
+            id : belt_speed
+            value : app.belt_speed_value
+            target : app.belt_speed_target
+            on_target : app.update_targets(belt_speed)
+            name : app.speed_text
+            unit : 'km/h'
+            min_value : 0
+            max_value : 5
+            auto_update : True
+
+        NumericInput :
+            id : vertical_speed
+            hidden : True
+            target : app.vertical_speed_target
+            value : app.vertical_speed_value
+            on_target : app.update_targets(vertical_speed)
+            name : 'Vitesse verticale'
+            unit : 'm/h'
+            min_value : 100
+            max_value : 3500
+            auto_update : True
+            increment_list : [10, 50, 100]
+
+    BoxLayout : 
+        orientation : 'vertical'
+        canvas.before:
+            Color:
+                rgba: (204/255, 82/255, 0/255,1) if app.steps_active else (0, 0, 0, 1)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        size_hint_y : 0.3
+        padding : [0,0,0,20]
+
+        Label :
+            text : 'Surface de marche'
+            font_size : 24
+        BoxLayout :
+            orientation : 'horizontal'
+            spacing : 10
+            ToggleButton :
+                text : 'Bande'
+                group : 'steps'
+                state : 'down'
+                on_press : app.toggle_steps(False)
+            ToggleButton :
+                text : 'Marches'
+                group : 'steps'
+                on_press : app.toggle_steps(True)
+
+    Controller :
+        id : controller
+    
+    BoxLayout : 
+        size_hint_y : 0.2
+        orientation : 'vertical'
+        padding : [0,20,0,20]
+        spacing : 20
+        canvas.before:
+            Color:
+                rgba: (204/255, 82/255, 0/255,1) if app.any_safety else (0, 0, 0, 1)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        Label :
+            text : 'Status des sécurités'
+            font_size : 24
+            markup : True
+
+        Status :
+            id : status
+    
 
 
