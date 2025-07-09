@@ -221,7 +221,24 @@ BoxLayout :
         size_hint_y : 0.1
         font_size : 24
 
-    
-    
+    BoxLayout :
+        orientation : 'horizontal'
+        size_hint_y : 0.1
+        spacing : 10
+        ToggleButton :
+            text : 'Aucun'
+            group : 'vertical_speed'
+            state : 'down'
+            on_press : app.mode_changed(self)
+        ToggleButton :
+            text : 'Inclinaison'
+            group : 'vertical_speed'
+            on_press : app.mode_changed(self)
+        ToggleButton :
+            text : 'Vitesse tapis'
+            group : 'vertical_speed'
+            on_press : app.mode_changed(self)
+
+
 
 
