@@ -1,1 +1,1 @@
-python3 /home/pi/ISSUL-LeMur/main.py
+/home/pi/kivy_venv/bin/python /home/pi/ISSUL-LeMur/main.py
