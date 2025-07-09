@@ -239,6 +239,96 @@ BoxLayout :
             group : 'vertical_speed'
             on_press : app.mode_changed(self)
 
+    GridLayout :
+        cols :3
+        spacing : 10
+        padding : 0
 
+        NumericInput :
+            id : tilt
+            target : app.tilt_target
+            value : app.tilt_value
+            on_target : app.update_targets(tilt)
+            name : 'Inclinaison'
+            unit : '°'
+            min_value : 15   #limité par le l'axe des poulies des courroies
+            max_value : 40  #limité par le l'axe des poulies des courroies
+            auto_update : False
+        
+        NumericInput :
+            id : belt_speed
+            value : app.belt_speed_value
+            target : app.belt_speed_target
+            on_target : app.update_targets(belt_speed)
+            name : app.speed_text
+            unit : 'km/h'
+            min_value : 0
+            max_value : 5
+            auto_update : True
+
+        NumericInput :
+            id : vertical_speed
+            hidden : True
+            target : app.vertical_speed_target
+            value : app.vertical_speed_value
+            on_target : app.update_targets(vertical_speed)
+            name : 'Vitesse verticale'
+            unit : 'm/h'
+            min_value : 100
+            max_value : 3500
+            auto_update : True
+            increment_list : [10, 50, 100]
+
+    BoxLayout : 
+        orientation : 'vertical'
+        canvas.before:
+            Color:
+                rgba: (204/255, 82/255, 0/255,1) if app.steps_active else (0, 0, 0, 1)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        size_hint_y : 0.3
+        padding : [0,0,0,20]
+
+        Label :
+            text : 'Surface de marche'
+            font_size : 24
+        BoxLayout :
+            orientation : 'horizontal'
+            spacing : 10
+            ToggleButton :
+                text : 'Bande'
+                group : 'steps'
+                state : 'down'
+                on_press : app.toggle_steps(False)
+            ToggleButton :
+                text : 'Marches'
+                group : 'steps'
+                on_press : app.toggle_steps(True)
+
+    Controller :
+        id : controller
+    
+    BoxLayout : 
+        size_hint_y : 0.2
+        orientation : 'vertical'
+        padding : [0,20,0,20]
+        spacing : 20
+        canvas.before:
+            Color:
+                rgba: (204/255, 82/255, 0/255,1) if app.any_safety else (0, 0, 0, 1)
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        Label :
+            text : 'Status des sécurités'
+            font_size : 24
+            markup : True
+
+        Status :
+            id : status
+    
 
 
