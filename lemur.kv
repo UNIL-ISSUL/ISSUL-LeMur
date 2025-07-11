@@ -258,7 +258,7 @@ BoxLayout :
             on_target : app.update_targets(tilt)
             name : 'Inclinaison'
             unit : '°'
-            min_value : 15   #limité par le l'axe des poulies des courroies
+            min_value : 1   #limité par le l'axe des poulies des courroies
             max_value : 40  #limité par le l'axe des poulies des courroies
             auto_update : False
         
@@ -270,7 +270,7 @@ BoxLayout :
             name : app.speed_text
             unit : 'km/h'
             min_value : 0
-            max_value : 5
+            max_value : 15
             auto_update : True
 
         NumericInput :
