@@ -205,16 +205,9 @@ class LeMurApp(App):
     
     def change_belt_speed(self,_=None) :
         Logger.info("belt speed target updated : " + str(self.belt_speed_target))
-        content = Button(text='Speed out of calibration, nearest value choosen (poor precision)\n\nclick to close')
-        popup = Popup(title='WARNING', content=content,size_hint=(None, None), size=(500, 200),auto_dismiss=False)
-        content.bind(on_press=popup.dismiss)
 
         if self.revpi :
-            if not self.revpi.set_belt_speed(self.belt_speed_target) :
-                #open pop up in kivy with warning message
-                if isinstance(App.get_running_app().root_window.children[0], Popup):
-                    App.get_running_app().root_window.children[0].dismiss()
-                popup.open()
+            self.revpi.set_belt_speed(self.belt_speed_target)
         else :
             self.belt_speed_value = self.belt_speed_target
     
