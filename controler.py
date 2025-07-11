@@ -1,7 +1,7 @@
 import platform
 
 def is_raspberry_pi() -> bool:
-    return platform.machine() in ('armv7l', 'armv6l')
+    return platform.machine() in ('armv7l', 'armv6l','aarch64')
 
 import revpimodio2
 from threading import Thread
