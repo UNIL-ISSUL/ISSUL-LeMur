@@ -18,7 +18,7 @@ from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.garden.led import Led
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
-import os,platform
+import controler
 import math
 import time
 from time import strftime, localtime, gmtime, sleep
@@ -188,6 +188,7 @@ class LeMurApp(App):
         Clock.schedule_interval(self.update_values,0.1)
         if self.revpi :
             self.tilt_target = self.revpi.get_lift_angle()
+        self.change_belt_speed()
 
     def on_stop(self):
         print('bye bye')
@@ -204,16 +205,9 @@ class LeMurApp(App):
     
     def change_belt_speed(self,_=None) :
         Logger.info("belt speed target updated : " + str(self.belt_speed_target))
-        content = Button(text='Speed out of calibration, nearest value choosen (poor precision)\n\nclick to close')
-        popup = Popup(title='WARNING', content=content,size_hint=(None, None), size=(500, 200),auto_dismiss=False)
-        content.bind(on_press=popup.dismiss)
 
         if self.revpi :
-            if not self.revpi.set_belt_speed(self.belt_speed_target) :
-                #open pop up in kivy with warning message
-                if isinstance(App.get_running_app().root_window.children[0], Popup):
-                    App.get_running_app().root_window.children[0].dismiss()
-                popup.open()
+            self.revpi.set_belt_speed(self.belt_speed_target)
         else :
             self.belt_speed_value = self.belt_speed_target
     
@@ -278,7 +272,7 @@ class LeMurApp(App):
             self.any_safety = False
         
         #update speed target
-        self.change_belt_speed()
+        #self.change_belt_speed()
     
     def update_running(self,_) :
 
@@ -485,7 +479,11 @@ def is_running_on_raspberry_pi():
     return False
  
 if __name__ == '__main__':
+<<<<<<< HEAD
     if is_running_on_raspberry_pi() :
+=======
+    if controler.is_raspberry_pi() : 
+>>>>>>> 179293b560d75b76d7a311af522c7771d24310be
         lemur = controler.revPI()
         lemur.mainloop()
     else :

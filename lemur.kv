@@ -58,7 +58,7 @@
                 disabled : root.hidden
                 id : automatic_button
                 state : 'down' if root.auto_update else 'normal'
-                text : 'Mode automatique' if self.state == 'down' else 'Mode manuel'
+                text : 'Mode auto' if self.state == 'down' else 'Mode manuel'
                 on_press : root.toggle_auto_update(automatic_button.state)
 
 <NumericInputCompact> :
