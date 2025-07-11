@@ -188,6 +188,7 @@ class LeMurApp(App):
         Clock.schedule_interval(self.update_values,0.1)
         if self.revpi :
             self.tilt_target = self.revpi.get_lift_angle()
+        self.change_belt_speed()
 
     def on_stop(self):
         print('bye bye')
@@ -278,7 +279,7 @@ class LeMurApp(App):
             self.any_safety = False
         
         #update speed target
-        self.change_belt_speed()
+        #self.change_belt_speed()
     
     def update_running(self,_) :
 
