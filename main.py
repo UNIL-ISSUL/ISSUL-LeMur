@@ -18,7 +18,7 @@ from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.garden.led import Led
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
-import controler
+import os,platform
 import math
 import time
 from time import strftime, localtime, gmtime, sleep
@@ -452,9 +452,41 @@ class LeMurApp(App):
                 self.root.ids.tilt.auto_update = True #force auto update on tilt ! compute speed based on real time speed
                 self.vertical_speed_mode = 2
             Logger.info("UI : Mode changed : "+instance.text)
-    
+
+def is_running_on_raspberry_pi():
+    """
+    Vérifie si le code s'exécute sur un Raspberry Pi (incluant RevPi).
+    """
+    # 1. Vérification de l'architecture ARM
+    # Les Raspberry Pi (y compris RevPi) utilisent une architecture ARM.
+    if platform.machine().startswith('arm') or platform.machine().startswith('aarch'):
+        # 2. Vérification de l'OS (généralement Debian/Raspberry Pi OS)
+        # La plupart des RevPi tournent sous une version de Debian/Raspberry Pi OS.
+        if platform.system() == 'Linux':
+            # 3. Vérification des détails du CPU via /proc/cpuinfo
+            # C'est la méthode la plus spécifique pour identifier un Pi.
+            # Le fichier /proc/cpuinfo contient des informations sur le CPU.
+            try:
+                with open('/proc/cpuinfo', 'r') as f:
+                    cpuinfo = f.read()
+                if "BCM2708" in cpuinfo or \
+                   "BCM2709" in cpuinfo or \
+                   "BCM2710" in cpuinfo or \
+                   "BCM2711" in cpuinfo: # Modèles de SoC Broadcom utilisés dans les Pi
+                    return True
+                # Pour les RevPi, on peut aussi chercher "Revolution Pi" dans /proc/cpuinfo
+                # ou dans dmesg si on veut être très spécifique à RevPi et non juste "Pi"
+                if "Revolution Pi" in cpuinfo or "RevPi" in cpuinfo: # Moins courant, mais possible
+                    return True
+
+            except FileNotFoundError:
+                pass # /proc/cpuinfo n'existe pas, donc pas un système Linux standard ou droits insuffisants
+
+    return False
+ 
 if __name__ == '__main__':
-    if controler.is_raspberry_pi() : 
+    #if controler.is_raspberry_pi() :
+    if is_running_on_raspberry_pi() : 
         lemur = controler.revPI()
         lemur.mainloop()
     else :
