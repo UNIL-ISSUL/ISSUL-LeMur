@@ -485,13 +485,7 @@ def is_running_on_raspberry_pi():
     return False
  
 if __name__ == '__main__':
-<<<<<<< HEAD
-    #if controler.is_raspberry_pi() :
-    if is_running_on_raspberry_pi() : 
-=======
-    if controler.is_raspberry_pi() : 
-        print("I am a raspberry")
->>>>>>> ea42e8445664f5ebdd4e9bedc41a2e077001321d
+    if is_running_on_raspberry_pi() :
         lemur = controler.revPI()
         lemur.mainloop()
     else :
