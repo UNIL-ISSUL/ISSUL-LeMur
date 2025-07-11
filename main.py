@@ -455,8 +455,10 @@ class LeMurApp(App):
     
 if __name__ == '__main__':
     if controler.is_raspberry_pi() : 
+        print("I am a raspberry")
         lemur = controler.revPI()
         lemur.mainloop()
     else :
+        print("I am a PC")
         lemur = None
     LeMurApp(lemur).run()
