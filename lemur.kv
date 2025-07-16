@@ -4,13 +4,20 @@
         text :root.name + " : " + "{:.2f}".format(root.value) + " / " + "{:.2f}".format(root.target) + " " + root.unit
         font_size : 25
         disabled : root.hidden
-    Slider : 
+    # Slider : 
+    #     disabled : root.hidden
+    #     min : root.min_value
+    #     step : root.increment_list[1]
+    #     max : root.max_value
+    #     value : root.target
+    #     on_value : root.slider_change(self.value)
+    TextInput :
+        multiline : False
+        size_hint_y : None
+        height : 40 
         disabled : root.hidden
-        min : root.min_value
-        step : root.increment_list[1]
-        max : root.max_value
-        value : root.target
-        on_value : root.slider_change(self.value)
+        text : "{:.2f}".format(root.target)
+        on_text_validate : root.slider_change(float(self.text))
     BoxLayout :
         orientation : 'horizontal'
         BoxLayout :
@@ -51,7 +58,7 @@
                 disabled : root.hidden
                 id : automatic_button
                 state : 'down' if root.auto_update else 'normal'
-                text : 'Mode automatique' if self.state == 'down' else 'Mode manuel'
+                text : 'Mode auto' if self.state == 'down' else 'Mode manuel'
                 on_press : root.toggle_auto_update(automatic_button.state)
 
 <NumericInputCompact> :
@@ -251,7 +258,7 @@ BoxLayout :
             on_target : app.update_targets(tilt)
             name : 'Inclinaison'
             unit : '°'
-            min_value : 15   #limité par le l'axe des poulies des courroies
+            min_value : 1   #limité par le l'axe des poulies des courroies
             max_value : 40  #limité par le l'axe des poulies des courroies
             auto_update : False
         
@@ -263,7 +270,7 @@ BoxLayout :
             name : app.speed_text
             unit : 'km/h'
             min_value : 0
-            max_value : 5
+            max_value : 15
             auto_update : True
 
         NumericInput :
@@ -327,8 +334,8 @@ BoxLayout :
             font_size : 24
             markup : True
 
-        Status :
-            id : status
+        #Status :
+        #    id : status
     
 
 

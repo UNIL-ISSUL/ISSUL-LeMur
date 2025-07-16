@@ -188,6 +188,7 @@ class LeMurApp(App):
         Clock.schedule_interval(self.update_values,0.1)
         if self.revpi :
             self.tilt_target = self.revpi.get_lift_angle()
+        self.change_belt_speed()
 
     def on_stop(self):
         print('bye bye')
@@ -204,16 +205,9 @@ class LeMurApp(App):
     
     def change_belt_speed(self,_=None) :
         Logger.info("belt speed target updated : " + str(self.belt_speed_target))
-        content = Button(text='Speed out of calibration, nearest value choosen (poor precision)\n\nclick to close')
-        popup = Popup(title='WARNING', content=content,size_hint=(None, None), size=(500, 200),auto_dismiss=False)
-        content.bind(on_press=popup.dismiss)
 
         if self.revpi :
-            if not self.revpi.set_belt_speed(self.belt_speed_target) :
-                #open pop up in kivy with warning message
-                if isinstance(App.get_running_app().root_window.children[0], Popup):
-                    App.get_running_app().root_window.children[0].dismiss()
-                popup.open()
+            self.revpi.set_belt_speed(self.belt_speed_target)
         else :
             self.belt_speed_value = self.belt_speed_target
     
@@ -278,7 +272,7 @@ class LeMurApp(App):
             self.any_safety = False
         
         #update speed target
-        self.change_belt_speed()
+        #self.change_belt_speed()
     
     def update_running(self,_) :
 
@@ -452,11 +446,12 @@ class LeMurApp(App):
                 self.root.ids.tilt.auto_update = True #force auto update on tilt ! compute speed based on real time speed
                 self.vertical_speed_mode = 2
             Logger.info("UI : Mode changed : "+instance.text)
-    
+ 
 if __name__ == '__main__':
     if controler.is_raspberry_pi() : 
         lemur = controler.revPI()
         lemur.mainloop()
     else :
+        print("I am a PC")
         lemur = None
     LeMurApp(lemur).run()

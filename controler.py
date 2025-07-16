@@ -1,7 +1,7 @@
 import platform
 
 def is_raspberry_pi() -> bool:
-    return platform.machine() in ('armv7l', 'armv6l')
+    return platform.machine() in ('armv7l', 'armv6l','aarch64')
 
 import revpimodio2
 from threading import Thread
@@ -126,39 +126,16 @@ class revPI() :
         
     #set belt speed to controller via modbus
     def set_belt_speed(self,v_kmh) :
-        # if steps :
-        #     Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='linear')
-        #     if math.isnan(Hz) :
-        #         Hz = griddata(self.speed_points_steps, self.speed_values_steps, (angle, v_kmh, weight), method='nearest')
-        #         Logger.info("nearest value used for steps speed")
-        #     else :
-        #         Logger.info("linear value used for steps speed")
-        # else :
-        #     Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='linear')
-        #     if math.isnan(Hz) :
-        #         Hz = griddata(self.speed_points_belt, self.speed_values_belt, (angle, v_kmh, weight), method='nearest')
-        #         Logger.info("nearest value used for belt speed")
-        #     else :
-        #         Logger.info("linear value used for belt speed")
-        # if math.isnan(Hz) :
-        #     Logger.warning("no value found for speed")
-        #     return False
-        # Hz = float(Hz)
-        # value = round(Hz * 100) #int is sent to frequency inverter with 0.01 precision
-        value = round(v_kmh*10000 / 40)    #100.00Hz for 40km/h
+        factor = 1.025#calibration to get correct output speed
+        value = round(factor*v_kmh*10000 / 40)    #100.00Hz for 40km/h
         #self.freq_2_speed = v_kmh / Hz
         Logger.info("belt frequency updated : " + str(value/100))
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
-        return True
     
     #return belt spped in km/h
     def get_belt_speed(self, steps = False) :
-        #read modbus value in hundred of m/s
-        value = merge_registers(self.rpi.io.belt_speed_current_0.value,self.rpi.io.belt_speed_current_1.value)
-        value = 1.0 * value / 10 #d004 with 0.1 precision
-        return value *3.6#* self.freq_2_speed convert m/s to km/h
-        #return value in km/h
-        return value
+        value = self.rpi.io.encoder_feedback_speed.value
+        return value * 3.6 / 1000
 
 if __name__ == '__main__':
     import sys, select, os
