@@ -19,6 +19,7 @@ from kivy.graphics import Color, Rectangle
 from kivy.garden.led import Led
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
 import controler
+from incremental_widget import IncrementalWidget
 import math
 import time
 from time import strftime, localtime, gmtime, sleep
@@ -145,7 +146,10 @@ class Ramp(BoxLayout) :
     def toggle_state(self,active) :
         self.state = active
 
+
 class LeMurApp(App):
+    #manual_widget_ids
+    manual_widget_ids = None
     #revpi reference
     revpi = None
     #UI properties
@@ -189,6 +193,10 @@ class LeMurApp(App):
         if self.revpi :
             self.tilt_target = self.revpi.get_lift_angle()
         self.change_belt_speed()
+        #define manual widget ids
+        self.manual_widget_ids = self.root.ids.manual_widget.ids
+        #attach controllet to widget
+        self.root.ids.incr_widget.set_controller(self.revpi)
 
     def on_stop(self):
         print('bye bye')
@@ -230,23 +238,23 @@ class LeMurApp(App):
     
     def init_ramp(self,start_speed) :
         #lock tilt screen
-        self.root.ids['tilt'].locked = True
+        self.manual_widget_ids.tilt.locked = True
         #set initial speed
-        self.root.ids['belt_speed'].value = start_speed
+        self.manual_widget_ids.belt_speed.value = start_speed
         #move lift to initial value
         self.move_lift(0)
     
     def update_ramp(self,dt)  :
         #cancel event scheduling if ramp is over
-        ramp = self.root.ids['ramp']
-        belt_speed = self.root.ids['belt_speed'].value
+        ramp =self.manual_widget_ids.ramp
+        belt_speed = self.manual_widget_ids.belt_speed.value
         if  (belt_speed >= ramp.final_speed and ramp.sign > 0) or (belt_speed <= ramp.final_speed and ramp.sign < 0) :
             if self.event_ramp : 
                 Clock.unschedule(self.event_ramp)
                 Clock.schedule_once(self.stop)
                 return 
         #update 
-        self.root.ids['belt_speed'].value += self.root.ids['ramp'].sign * self.root.ids['ramp'].step_speed
+        self.manual_widget_ids.belt_speed.value += self.manual_widget_ids.ramp.sign * self.manual_widget_ids.ramp.step_speed
         Clock.schedule_once(self.move_lift)
     
     def update_values(self,_) :
@@ -283,8 +291,8 @@ class LeMurApp(App):
         self.last_time = time.time()
 
     def start(self) :
-        stop_widget = self.root.ids['controller'].ids['stop']
-        start_widget = self.root.ids['controller'].ids['start']
+        stop_widget = self.manual_widget_ids.controller.ids['stop']
+        start_widget = self.manual_widget_ids.controller.ids['start']
         if start_widget.state == 'down' :
             self.running_event = Clock.schedule_interval(self.update_running,0.1)
             stop_widget.state = 'normal'
@@ -302,8 +310,8 @@ class LeMurApp(App):
         #    self.event_ramp = Clock.schedule_interval(self.update_ramp,self.root.ids['ramp'].step_duration_s)
     
     def stop(self) :
-        stop_widget = self.root.ids['controller'].ids['stop']
-        start_widget = self.root.ids['controller'].ids['start']
+        stop_widget = self.manual_widget_ids.controller.ids['stop']
+        start_widget = self.manual_widget_ids.controller.ids['start']
         if stop_widget.state == 'down' :
             stop_widget.state = 'down'
             start_widget.state = 'normal'
@@ -320,12 +328,12 @@ class LeMurApp(App):
     def update_targets(self,instance,manual=False) :
         if self.vertical_speed_mode == 0 :  #vertical speed in manual mode
             #update tilt
-            if instance == self.root.ids['tilt'] :
+            if instance == self.manual_widget_ids.tilt :
                 self.tilt_target = instance.target
                 if instance.auto_update or manual :
                     self.move_lift()
             #update belt speed
-            if instance == self.root.ids['belt_speed'] :
+            if instance == self.manual_widget_ids.belt_speed :
                 self.belt_speed_target = instance.target
                 if instance.auto_update or manual:
                     self.change_belt_speed()
@@ -334,13 +342,13 @@ class LeMurApp(App):
         
         if self.vertical_speed_mode == 1 :  #vertical speed in tilt mode
             #update tilt
-            if instance == self.root.ids['tilt'] :
+            if instance == self.manual_widget_ids.tilt :
                 if instance.value == 0 :
                     instance.value = 0.01
                 #compute belt speed target to check for max value
                 belt_speed_target = compute_belt_speed(instance.target,self.vertical_speed_target)
-                if belt_speed_target > self.root.ids['belt_speed'].max_value:
-                    instance.target = compute_tilt(self.root.ids['belt_speed'].max_value,self.vertical_speed_target)
+                if belt_speed_target > self.manual_widget_ids.belt_speed.max_value:
+                    instance.target = compute_tilt(self.manual_widget_ids.belt_speed.max_value,self.vertical_speed_target)
                     pass
                 self.tilt_target = instance.target
                 #compute acutal belt speed target
@@ -350,17 +358,17 @@ class LeMurApp(App):
                     self.move_lift()
                     self.change_belt_speed()
             #update vertical speed
-            if instance == self.root.ids['vertical_speed'] :
+            if instance == self.manual_widget_ids.vertical_speed :
                 #compute belt speed target to check for max value
                 belt_speed_target = compute_belt_speed(self.tilt_target,instance.target)
-                if belt_speed_target > self.root.ids['belt_speed'].max_value :
-                    instance.target = compute_vertical_speed_mh(self.tilt_target,self.root.ids['belt_speed'].max_value)
+                if belt_speed_target > self.manual_widget_ids.belt_speed.max_value :
+                    instance.target = compute_vertical_speed_mh(self.tilt_target,self.manual_widget_ids.belt_speed.max_value)
                     pass
                 self.vertical_speed_target = instance.target
                 #compute acutal belt speed target
                 #belt_speed_target = compute_belt_speed(self.tilt_target,instance.value)
                 self.belt_speed_target = compute_belt_speed(self.tilt_target,self.vertical_speed_target)
-                if self.root.ids['vertical_speed'].auto_update or manual:
+                if self.manual_widget_ids.vertical_speed.auto_update or manual:
                     self.change_belt_speed()
             
             #update and compute belt speed
@@ -375,7 +383,7 @@ class LeMurApp(App):
         
         if self.vertical_speed_mode == 2 :  #vertical speed in belt speed mode
             #update belt speed
-            if instance == self.root.ids['belt_speed'] :
+            if instance == self.manual_widget_ids.belt_speed :
                 #check for 0 value to avoid divition by 0 in temp
                 if instance.target == 0 :
                     instance.target = 0.1
@@ -387,18 +395,18 @@ class LeMurApp(App):
                 #compute estimated tilt
                 tilt_target = compute_tilt(instance.target,self.vertical_speed_target)
                 #check for max value
-                if tilt_target > self.root.ids['tilt'].max_value :
-                    instance.target = compute_belt_speed(self.root.ids['tilt'].max_value,self.vertical_speed_target)
+                if tilt_target > self.manual_widget_ids.tilt.max_value :
+                    instance.target = compute_belt_speed(self.manual_widget_ids.tilt.max_value,self.vertical_speed_target)
                 #check for min value    
-                if tilt_target < self.root.ids['tilt'].min_value :
-                    instance.target = compute_belt_speed(self.root.ids['tilt'].min_value,self.vertical_speed_target)
+                if tilt_target < self.manual_widget_ids.tilt.min_value :
+                    instance.target = compute_belt_speed(self.manual_widget_ids.tilt.min_value,self.vertical_speed_target)
                 #apply value
                 self.belt_speed_target = instance.target
                 #move if applicable
                 if instance.auto_update or manual:
                     self.change_belt_speed()
             #update vertical speed
-            if instance == self.root.ids['vertical_speed'] :
+            if instance == self.manual_widget_ids['vertical_speed'] :
                 #check for 0 value to avoid divition by 0 in temp
                 temp = instance.target / (self.belt_speed_target*1000)
                 #asin(x) x is in the range [-1, 1]
@@ -408,42 +416,42 @@ class LeMurApp(App):
                 #compute estimated tilt
                 tilt_target = compute_tilt(self.belt_speed_target,instance.target)
                 #check for max value
-                if tilt_target > self.root.ids['tilt'].max_value :
-                    instance.target = compute_vertical_speed_mh(self.root.ids['tilt'].max_value,self.belt_speed_target)
+                if tilt_target > self.manual_widget_ids['tilt'].max_value :
+                    instance.target = compute_vertical_speed_mh(self.manual_widget_ids['tilt'].max_value,self.belt_speed_target)
                 #check for min value
-                if tilt_target < self.root.ids['tilt'].min_value :
-                    instance.target = compute_vertical_speed_mh(self.root.ids['tilt'].min_value,self.belt_speed_target)
+                if tilt_target < self.manual_widget_ids['tilt'].min_value :
+                    instance.target = compute_vertical_speed_mh(self.manual_widget_ids['tilt'].min_value,self.belt_speed_target)
                 #apply value
                 self.vertical_speed_target = instance.target
             
             #compute tilt
             tilt_target = compute_tilt(self.belt_speed_target,self.vertical_speed_target)
             #set tilt to UI
-            self.root.ids['tilt'].target = tilt_target
+            self.manual_widget_ids['tilt'].target = tilt_target
             #set tilt to backend
             self.tilt_target = tilt_target
             #move if applicable
-            if self.root.ids['vertical_speed'].auto_update or manual:
+            if self.manual_widget_ids['vertical_speed'].auto_update or manual:
                 self.move_lift()   
     
     def mode_changed(self,instance) :
         if instance.state == 'down' :
             if instance.text == "Aucun" :
-                self.root.ids.tilt.hidden = False
-                self.root.ids.belt_speed.hidden = False
-                self.root.ids.vertical_speed.hidden = True
+                self.manual_widget_ids.tilt.hidden = False
+                self.manual_widget_ids.belt_speed.hidden = False
+                self.manual_widget_ids.vertical_speed.hidden = True
                 self.vertical_speed_mode = 0
             if instance.text == "Inclinaison" :
-                self.root.ids.tilt.hidden = False
-                self.root.ids.belt_speed.hidden = True
-                self.root.ids.vertical_speed.hidden = False
-                self.root.ids.belt_speed.auto_update = True #force auto update on speed ! compute speed based on real time tilt
+                self.manual_widget_ids.tilt.hidden = False
+                self.manual_widget_ids.belt_speed.hidden = True
+                self.manual_widget_ids.vertical_speed.hidden = False
+                self.manual_widget_ids.belt_speed.auto_update = True #force auto update on speed ! compute speed based on real time tilt
                 self.vertical_speed_mode = 1
             if instance.text == "Vitesse tapis" :
-                self.root.ids.tilt.hidden = True
-                self.root.ids.belt_speed.hidden = False
-                self.root.ids.vertical_speed.hidden = False
-                self.root.ids.tilt.auto_update = True #force auto update on tilt ! compute speed based on real time speed
+                self.manual_widget_ids.tilt.hidden = True
+                self.manual_widget_ids.belt_speed.hidden = False
+                self.manual_widget_ids.vertical_speed.hidden = False
+                self.manual_widget_ids.tilt.auto_update = True #force auto update on tilt ! compute speed based on real time speed
                 self.vertical_speed_mode = 2
             Logger.info("UI : Mode changed : "+instance.text)
  

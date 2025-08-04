@@ -216,8 +216,8 @@
         Button :
             text : "Initialisation"
             on_press : app.init_ramp(start_speed.value)
-#MAIN WINDOW
-BoxLayout :
+#Manual Windows
+<ManualWidget@BoxLayout>:
     orientation : 'vertical'
     padding : 10
     spacing : 10
@@ -334,8 +334,20 @@ BoxLayout :
             font_size : 24
             markup : True
 
-        #Status :
-        #    id : status
-    
+BoxLayout :
+    orientation: "vertical"
 
+    TabbedPanel:
+        #id: main_tabs
+        do_default_tab: False
+        tab_width: self.width / 2
 
+        TabbedPanelItem:
+            text: "Contrôle manuel"
+            ManualWidget :
+                id: manual_widget
+
+        TabbedPanelItem:
+            text: "Test Incrémental"
+            IncrementalWidget:
+                id: incr_widget
