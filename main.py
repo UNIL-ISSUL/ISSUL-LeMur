@@ -203,7 +203,7 @@ class LeMurApp(App):
     def on_stop(self):
         print('bye bye')
         if self.revpi :
-            self.rpi.stop_all()
+            self.revpi.stop_all()
 
     def move_lift(self,_=None) :
         Logger.info("Tilt target updated : " + str(self.tilt_target))

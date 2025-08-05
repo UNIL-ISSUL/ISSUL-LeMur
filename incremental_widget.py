@@ -69,39 +69,40 @@ class IncrementalWidget(BoxLayout):
                 break
 
     def add_point(self):
-        grid = self.ids.points_grid
+        if "points_grid" in self.ids :
+            grid = self.ids.points_grid
 
-        ti_time = TabNavigableInput(hint_text='s', multiline=False, input_filter='float')
-        ti_incl = TabNavigableInput(hint_text='°', multiline=False, input_filter='float')
-        ti_speed = TabNavigableInput(hint_text='km/h', multiline=False, input_filter='float')
-        ti_asc = TabNavigableInput(hint_text='m/h', multiline=False, input_filter='float')
+            ti_time = TabNavigableInput(hint_text='s', multiline=False, input_filter='float')
+            ti_incl = TabNavigableInput(hint_text='°', multiline=False, input_filter='float')
+            ti_speed = TabNavigableInput(hint_text='km/h', multiline=False, input_filter='float')
+            ti_asc = TabNavigableInput(hint_text='m/h', multiline=False, input_filter='float')
 
-        for ti in [ti_time, ti_incl, ti_speed, ti_asc]:
-            ti.parent_widget = self
+            for ti in [ti_time, ti_incl, ti_speed, ti_asc]:
+                ti.parent_widget = self
 
-        btn = Button(text="Supprimer", size_hint_x=None, width=100)
+            btn = Button(text="Supprimer", size_hint_x=None, width=100)
 
-        row = {'time': ti_time, 'incl': ti_incl, 'speed': ti_speed, 'asc': ti_asc, 'btn': btn}
-        self.points.append(row)
+            row = {'time': ti_time, 'incl': ti_incl, 'speed': ti_speed, 'asc': ti_asc, 'btn': btn}
+            self.points.append(row)
 
-        def remove_row(instance):
+            def remove_row(instance):
+                for widget in [ti_time, ti_incl, ti_speed, ti_asc, btn]:
+                    grid.remove_widget(widget)
+                self.points.remove(row)
+
+            def on_change(instance, value):
+                # Update the row with the new value
+                self.recalculate(row)
+                # Recalculate the graph after any change
+                self.update_graph()
+
+            for widget in [ti_time, ti_incl, ti_speed, ti_asc]:
+                widget.bind(text=on_change)
+
+            btn.bind(on_press=remove_row)
+
             for widget in [ti_time, ti_incl, ti_speed, ti_asc, btn]:
-                grid.remove_widget(widget)
-            self.points.remove(row)
-
-        def on_change(instance, value):
-            # Update the row with the new value
-            self.recalculate(row)
-            # Recalculate the graph after any change
-            self.update_graph()
-
-        for widget in [ti_time, ti_incl, ti_speed, ti_asc]:
-            widget.bind(text=on_change)
-
-        btn.bind(on_press=remove_row)
-
-        for widget in [ti_time, ti_incl, ti_speed, ti_asc, btn]:
-            grid.add_widget(widget)
+                grid.add_widget(widget)
     
     def recalculate(self, row):
         # Récupération des valeurs des champs
@@ -282,7 +283,7 @@ class IncrementalWidget(BoxLayout):
             #move treadmill and start band if connected
             if self.controller :
                 #update treamill speed and angle
-                self.update_test_time()
+                self.update_test_time(0.1)
                 #start_belt
                 self.controller.start_belt()
 
