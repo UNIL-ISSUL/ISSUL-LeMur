@@ -69,12 +69,6 @@ class revPI() :
         #close the program properly
         self.rpi.handlesignalend(cleanupfunc=self.stop_all)
 
-        #read speed calibrations files
-        self.speed_points_belt = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(1,2,3)) 
-        self.speed_values_belt = np.loadtxt('speed_calib_belt.txt', delimiter='\t',skiprows=2,usecols=(0))
-        self.speed_points_steps = np.loadtxt('speed_calib_steps.txt', delimiter='\t',skiprows=2,usecols=(1,2,3))
-        self.speed_values_steps = np.loadtxt('speed_calib_steps.txt', delimiter='\t',skiprows=2,usecols=(0))
-
     
     def mainloop(self) :
         self.rpi.mainloop(blocking=False)
