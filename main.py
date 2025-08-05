@@ -189,14 +189,16 @@ class LeMurApp(App):
         self.revpi = revpi
 
     def build(self):
+        #attach controllet to widget
+        self.root.ids.incr_widget.set_controller(self.revpi)
+        #attach event
         Clock.schedule_interval(self.update_values,0.1)
+        #update belt_speed
         if self.revpi :
             self.tilt_target = self.revpi.get_lift_angle()
         self.change_belt_speed()
         #define manual widget ids
         self.manual_widget_ids = self.root.ids.manual_widget.ids
-        #attach controllet to widget
-        self.root.ids.incr_widget.set_controller(self.revpi)
 
     def on_stop(self):
         print('bye bye')
