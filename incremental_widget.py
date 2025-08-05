@@ -1,4 +1,4 @@
-from kivy.garden.graph import Graph, MeshLinePlot, LinePlot
+from kivy_garden.graph import Graph, MeshLinePlot, LinePlot
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
 from kivy.utils import platform
