@@ -73,10 +73,10 @@ class IncrementalWidget(BoxLayout):
         if "points_grid" in self.ids :
             grid = self.ids.points_grid
 
-            ti_time = TabNavigableInput(hint_text='s', multiline=False, input_filter='float')
-            ti_incl = TabNavigableInput(hint_text='°', multiline=False, input_filter='float')
-            ti_speed = TabNavigableInput(hint_text='km/h', multiline=False, input_filter='float')
-            ti_asc = TabNavigableInput(hint_text='m/h', multiline=False, input_filter='float')
+            ti_time = TabNavigableInput(hint_text='s', multiline=False)#, input_filter='float')
+            ti_incl = TabNavigableInput(hint_text='°', multiline=False)#, input_filter='float')
+            ti_speed = TabNavigableInput(hint_text='km/h', multiline=False)#, input_filter='float')
+            ti_asc = TabNavigableInput(hint_text='m/h', multiline=False)#, input_filter='float')
 
             for ti in [ti_time, ti_incl, ti_speed, ti_asc]:
                 ti.parent_widget = self
