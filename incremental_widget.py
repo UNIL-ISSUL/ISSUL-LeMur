@@ -51,6 +51,7 @@ class IncrementalWidget(BoxLayout):
     def _delayed_init(self, *args):
         self.points = []
         self.test_points = []
+        self.treadmill_points = []
         self.add_point()
 
     def handle_tab(self, instance):
@@ -282,6 +283,8 @@ class IncrementalWidget(BoxLayout):
             self.time_update_event = Clock.schedule_interval(self.update_test_time, 0.1)
             #move treadmill and start band if connected
             if self.controller :
+                #reset treadmill points
+                self.treadmill_points = []
                 #update treamill speed and angle
                 self.update_test_time(0.1)
                 #start_belt
@@ -312,11 +315,21 @@ class IncrementalWidget(BoxLayout):
             return
 
         #update treadmill speed and angle
-        if self.controller :
+        controller = self.controller
+        if controller :
             speed = self.get_speed(t)
             angle = self.get_angle(t)
-            self.controller.set_belt_speed(speed)
-            self.controller.set_lift_angle(angle)
+            controller.set_belt_speed(speed)
+            controller.set_lift_angle(angle)
+            # Store the treadmill point
+            actual_speed = controller.get_belt_speed()
+            actual_angle = controller.get_lift_angle()  
+            self.treadmill_points.append({
+                'time': t,
+                'speed': actual_speed,
+                'incl': actual_angle,
+                'asc': actual_speed * sin(radians(actual_angle)) * 1000  # Convert km/h to m/h
+            })
 
         # Mettre à jour l'affichage du temps et des valeurs actuelles
         #self.ids.time_display.text = f"{int(t)} s"
@@ -328,11 +341,19 @@ class IncrementalWidget(BoxLayout):
         self.update_graph_dot(t, self._interpolate(t,self.graph_variable))
     
     def update_graph_dot(self, time_value, y_value):
+        #show a vertical line at the current time on the graph
         if not self.current_dot:
             self.current_dot = MeshLinePlot(color=[1, 1, 0, 1])
             self.graph.add_plot(self.current_dot)
         self.current_dot.points =  [(time_value, 0), (time_value, 1e9)]
-    
+
+        #Add a new trace with actual values
+        if not self.actual_plot :
+            self.actual_plot = MeshLinePlot(color=[1, 1, 0, 1])
+            self.graph.add_plot(self.actual_plot)
+        #update points
+        self.graph.actual_plot.points = [(p['time'], p[self.graph_variable]) for p in self.treadmill_points]
+
     def get_speed(self, t):
         return self._interpolate(t,"speed")
 
