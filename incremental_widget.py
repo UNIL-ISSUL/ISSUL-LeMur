@@ -322,14 +322,14 @@ class IncrementalWidget(BoxLayout):
             controller.set_belt_speed(speed)
             controller.set_lift_angle(angle)
             # Store the treadmill point
-            actual_speed = controller.get_belt_speed()
-            actual_angle = controller.get_lift_angle()  
-            self.treadmill_points.append({
-                'time': t,
-                'speed': actual_speed,
-                'incl': actual_angle,
-                'asc': actual_speed * sin(radians(actual_angle)) * 1000  # Convert km/h to m/h
-            })
+            # actual_speed = controller.get_belt_speed()
+            # actual_angle = controller.get_lift_angle()  
+            # self.treadmill_points.append({
+            #     'time': t,
+            #     'speed': actual_speed,
+            #     'incl': actual_angle,
+            #     'asc': actual_speed * sin(radians(actual_angle)) * 1000  # Convert km/h to m/h
+            # })
 
         # Mettre à jour l'affichage du temps et des valeurs actuelles
         #self.ids.time_display.text = f"{int(t)} s"
@@ -347,12 +347,12 @@ class IncrementalWidget(BoxLayout):
             self.graph.add_plot(self.current_dot)
         self.current_dot.points =  [(time_value, 0), (time_value, 1e9)]
 
-        #Add a new trace with actual values
-        if not self.actual_plot :
-            self.actual_plot = MeshLinePlot(color=[1, 1, 0, 1])
-            self.graph.add_plot(self.actual_plot)
-        #update points
-        self.graph.actual_plot.points = [(p['time'], p[self.graph_variable]) for p in self.treadmill_points]
+        # #Add a new trace with actual values
+        # if not self.actual_plot :
+        #     self.actual_plot = MeshLinePlot(color=[1, 1, 0, 1])
+        #     self.graph.add_plot(self.actual_plot)
+        # #update points
+        # self.graph.actual_plot.points = [(p['time'], p[self.graph_variable]) for p in self.treadmill_points]
 
     def get_speed(self, t):
         return self._interpolate(t,"speed")
