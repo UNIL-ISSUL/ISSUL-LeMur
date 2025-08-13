@@ -26,18 +26,20 @@
                 size_hint_x: None
                 width: 100
 
-        # ScrollView:
-        #     do_scroll_x: False
-        #     do_scroll_y: True
-        GridLayout:
-            id: points_grid
-            cols: 5
-            size_hint_y: None
-            height: self.minimum_height
-            row_default_height: 40
-            row_force_default: True
-            padding: [0, 4]
-            spacing: [4, 4]
+        ScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
+            bar_width: 10
+            size_hint_y = 1
+            GridLayout:
+                id: points_grid
+                cols: 5
+                size_hint_y: None
+                height: self.minimum_height
+                row_default_height: 40
+                row_force_default: True
+                padding: [0, 4]
+                spacing: [4, 4]
 
         BoxLayout :
             size_hint_y: None
