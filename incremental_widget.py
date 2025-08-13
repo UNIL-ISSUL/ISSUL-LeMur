@@ -9,7 +9,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.lang import Builder
-from math import radians, sin, degrees, asin, floor, ceil
+from math import radians, sin, degrees, asin, floor, ceil, log10
 import numpy as np
 import time, csv, os
 from datetime import datetime
@@ -31,6 +31,59 @@ class TabNavigableInput(TextInput):
             Clock.schedule_once(lambda dt: self.parent_widget.handle_tab(self), 0.05)
             return True
         return super().keyboard_on_key_down(window, keycode, text, modifiers)
+    
+def compute_axis_range(values, padding_ratio=0.05, max_minor=5):
+    """
+    Calcule xmin, xmax, tick_major et tick_minor pour un axe de graphique.
+
+    :param values: Liste de nombres ou nombre unique
+    :param padding_ratio: Espace vide ajouté de chaque côté (% de l'intervalle)
+    :param max_minor: Nombre maximum de ticks mineurs par tick majeur
+    :return: (xmin, xmax, tick_major, tick_minor)
+    """
+    # Si une seule valeur donnée → liste
+    if not hasattr(values, '__iter__'):
+        values = [values]
+
+    vmin = min(values)
+    vmax = max(values)
+
+    # Cas particulier : toutes les valeurs identiques
+    if vmin == vmax:
+        vmin -= 1
+        vmax += 1
+
+    # Calcul de l'intervalle avec marge
+    span = vmax - vmin
+    padding = span * padding_ratio
+    vmin -= padding
+    vmax += padding
+
+    # Ordre de grandeur du pas
+    magnitude = 10 ** floor(log10(span))
+    tick_major = magnitude
+
+    # Ajustement du pas pour avoir 5 à 10 ticks max
+    if span / tick_major < 5:
+        tick_major /= 2
+    elif span / tick_major > 10:
+        tick_major *= 2
+
+    # Arrondi des bornes au multiple du pas
+    xmin = floor(vmin / tick_major) * tick_major
+    xmax = ceil(vmax / tick_major) * tick_major
+
+    # Tick mineur : diviser le tick majeur en parts égales
+    for div in [5, 4, 3, 2, 1]:
+        if div <= max_minor:
+            #stop if tick_major modulo div == 0
+            if tick_major % div == 0:
+                tick_minor = tick_major / div
+            else:
+                tick_minor = 0
+            break
+
+    return xmin, xmax, tick_major, tick_minor
 
 
 class IncrementalWidget(BoxLayout):
@@ -92,10 +145,12 @@ class IncrementalWidget(BoxLayout):
                 self.points.remove(row)
 
             def on_change(instance, value):
+                print(f"value: {value}")
                 # Update the row with the new value
                 self.recalculate(row)
                 # Recalculate the graph after any change
                 self.update_graph()
+                #Clock.schedule_once(lambda dt:self.update_graph(),0.2)
 
             for widget in [ti_time, ti_incl, ti_speed, ti_asc]:
                 widget.bind(text=on_change)
@@ -202,25 +257,20 @@ class IncrementalWidget(BoxLayout):
         # Ajustement dynamique des axes  
         x_vals = [p['time'] for p in self.test_points]
         y_vals = [p[self.graph_variable] for p in self.test_points]
-        x_range = max(x_vals) - min(x_vals)
-        y_range = max(y_vals) - min(y_vals)
-        #avoid division by zero on axes calculation
-        if x_range == 0 :
-            x_vals = [min(x_vals), max(x_vals) + 1]
-            x_range = 1
-        if y_range == 0:
-            y_vals = [min(y_vals)-1, max(y_vals) + 1]
-            y_range = 1
-        # Set the graph limits to be multiples of thick major
-        self.graph.xmin = floor(min(x_vals) / 10) * 10
-        self.graph.xmax = ceil(max(x_vals) / 10) * 10 
-        self.graph.ymin = floor(min(y_vals) / 10) * 10
-        self.graph.ymax = ceil(max(y_vals) / 10) * 10
+        #adjust graph to data
+        xmin, xmax, xmajor, xminor = compute_axis_range(x_vals,0)
+        ymin, ymax, ymajor, yminor = compute_axis_range(y_vals,0.1)
+
+        # Set the graph limits
+        self.graph.xmin = xmin
+        self.graph.xmax = xmax
+        self.graph.ymin = ymin
+        self.graph.ymax = ymax
         #Set the graphs ticks
-        self.graph.x_ticks_major = (self.graph.xmax-self.graph.xmin) / 10
-        self.graph.y_ticks_major = (self.graph.ymax-self.graph.ymin) / 5
-        self.graph.x_ticks_minor = self.graph.x_ticks_major / 2
-        self.graph.y_ticks_minor =self.graph.y_ticks_major / 2
+        self.graph.x_ticks_major = xmajor
+        self.graph.y_ticks_major = ymajor
+        self.graph.x_ticks_minor = xminor
+        self.graph.y_ticks_minor = yminor
         #add the points to the plot
         self.plot.points = [(p['time'], p[self.graph_variable]) for p in self.test_points]
 

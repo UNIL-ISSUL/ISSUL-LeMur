@@ -16,7 +16,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
-from kivy.garden.led import Led
+
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
 import controler
 from incremental_widget import IncrementalWidget
