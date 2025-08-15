@@ -19,20 +19,20 @@ def debug_background(widget, color):
 class SliderScrollTest(App):
     def build(self):
         root = BoxLayout(orientation='vertical', spacing=10, padding=10)
-        debug_background(root, (0.8, 0.8, 0.8, 1))  # gris clair
+        #debug_background(root, (0.8, 0.8, 0.8, 1))  # gris clair
 
         # --- SLIDER ---
         slider_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
-        debug_background(slider_layout, (1, 0, 0, 0.3))  # rouge transparent
+        #debug_background(slider_layout, (1, 0, 0, 0.3))  # rouge transparent
 
 
         self.slider_value = Label(text="Valeur: 0", size_hint_x=None, width=100)
-        debug_background(self.slider_value, (0, 0, 1, 0.3))  # bleu transparent
+        #debug_background(self.slider_value, (0, 0, 1, 0.3))  # bleu transparent
 
 
-        slider = Slider(min=0, max=100, value=0, size_hint_y=None, height=150)
-        debug_background(slider, (0, 1, 0, 0.5))  # vert plus visible
-        #slider = Slider(min=0, max=100, value=0)
+        #slider = Slider(min=0, max=100, value=0, size_hint_y=None, height=150)
+        #debug_background(slider, (0, 1, 0, 0.5))  # vert plus visible
+        slider = Slider(min=0, max=100, value=0)
         #debug_background(slider, (0, 1, 0, 0.3))  # vert transparent
         slider.bind(value=self.on_slider_value_change)
 
@@ -42,16 +42,16 @@ class SliderScrollTest(App):
 
         # --- SCROLLVIEW ---
         scrollview = ScrollView(size_hint=(1, 1))
-        debug_background(scrollview, (1, 1, 0, 0.3))  # jaune transparent
+        #debug_background(scrollview, (1, 1, 0, 0.3))  # jaune transparent
 
         grid = GridLayout(cols=1, size_hint_y=None, spacing=5, padding=5)
-        debug_background(grid, (0.5, 0, 0.5, 0.3))  # violet transparent
+        #debug_background(grid, (0.5, 0, 0.5, 0.3))  # violet transparent
         grid.bind(minimum_height=grid.setter('height'))
 
         # Ajout de nombreux labels pour tester le défilement
         for i in range(1, 51):
             lbl = Label(text=f"Ligne {i}", size_hint_y=None, height=30)
-            debug_background(lbl, (0, 1, 1, 0.3))  # cyan transparent
+            #debug_background(lbl, (0, 1, 1, 0.3))  # cyan transparent
             grid.add_widget(lbl)
 
         scrollview.add_widget(grid)

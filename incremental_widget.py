@@ -145,7 +145,6 @@ class IncrementalWidget(BoxLayout):
                 self.points.remove(row)
 
             def on_change(instance, value):
-                print(f"value: {value}")
                 # Update the row with the new value
                 self.recalculate(row)
                 # Recalculate the graph after any change
