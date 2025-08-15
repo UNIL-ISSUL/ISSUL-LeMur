@@ -218,6 +218,7 @@
             on_press : app.init_ramp(start_speed.value)
 #Manual Windows
 <ManualWidget@BoxLayout>:
+
     orientation : 'vertical'
     padding : 10
     spacing : 10
@@ -334,20 +335,40 @@
             font_size : 24
             markup : True
 
+<MainScreenManager>:
+    id: screen_manager
+
+    Screen:
+        name: "manual_tab"
+        ManualWidget:
+            id: manual_widget
+
+    Screen:
+        name: "incremental_tab"
+        IncrementalWidget:
+            id: incr_widget
+
+ 
+
 BoxLayout :
     orientation: "vertical"
 
-    TabbedPanel:
-        #id: main_tabs
-        do_default_tab: False
-        tab_width: self.width / 2
+     # --- Barre d'onglets ---
+    BoxLayout:
+        size_hint_y: None
+        height: "40dp"
 
-        TabbedPanelItem:
+        ToggleButton:
             text: "Contrôle manuel"
-            ManualWidget :
-                id: manual_widget
+            group: "tabs"
+            state: "down"
+            on_release: screen_manager.current = "manual_tab"
 
-        TabbedPanelItem:
-            text: "Test Incrémental"
-            IncrementalWidget:
-                id: incr_widget
+        ToggleButton:
+            text: "Test incrémental"
+            group: "tabs"
+            on_release: screen_manager.current = "incremental_tab"
+
+    # --- Contenu des onglets ---
+    MainScreenManager:
+        id: screen_manager

@@ -16,6 +16,8 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
+from kivy.uix.screenmanager import ScreenManager
+
 
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
 import controler
@@ -36,6 +38,9 @@ def compute_belt_speed(tilt_degree,vertical_speed_mh):
 def compute_tilt(belt_speed_kmh,vertical_speed_mh) :
     temp = vertical_speed_mh / (belt_speed_kmh*1000)
     return math.degrees(math.asin(temp))
+
+class MainScreenManager(ScreenManager):
+    pass
 
 class NumericInput(BoxLayout):
     name = StringProperty("value")
@@ -190,9 +195,10 @@ class LeMurApp(App):
 
     def build(self):
         #define manual widget ids
-        self.manual_widget_ids = self.root.ids.manual_widget.ids
+        self.manual_widget_ids = self.root.ids.screen_manager.ids.manual_widget.ids
+        self.incremental_widget = self.root.ids.screen_manager.ids.incr_widget
         #attach controllet to widget
-        self.root.ids.incr_widget.set_controller(self.revpi)
+        self.incremental_widget.set_controller(self.revpi)
         #attach event
         Clock.schedule_interval(self.update_values,0.1)
         #update belt_speed

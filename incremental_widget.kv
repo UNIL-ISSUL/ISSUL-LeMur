@@ -4,7 +4,7 @@
     #---- PARTIE TABLEAU DE SAISIE ----#
     BoxLayout:
         orientation: 'vertical'
-        height: 300
+        size_hint_y: 0.3
         GridLayout:
             cols : 5
             size_hint_y: None
@@ -131,16 +131,16 @@
                 text: "Vitesse Asc. [m/h]"
             Label: 
                 text: ""
-        # ScrollView:
-        #     do_scroll_x: False
-        #     do_scroll_y: True
-        GridLayout:
-            id: events_grid
-            cols: 5
-            size_hint_y: None
-            height: self.minimum_height
-            row_default_height: "30dp"
-            row_force_default: True
+        ScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
+            GridLayout:
+                id: events_grid
+                cols: 5
+                size_hint_y: None
+                height: self.minimum_height
+                row_default_height: "30dp"
+                row_force_default: True
         BoxLayout:
             size_hint_y: None
             height: "40dp"
