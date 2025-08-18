@@ -101,10 +101,21 @@
         BoxLayout:
             size_hint_y: None
             height: "40dp"
+            Button:
+                size_hint_x: 0.2
+                width: "100dp"
+                text: "Go to 0"
+                id : init_button
+                on_release: root.goto_0()
             ToggleButton:
                 text: "Start"
                 id : start_button
                 on_release: root.start_test()
+                group: "test_control"
+            ToggleButton:
+                text: "Pause"
+                id : pause_button
+                on_release: root.pause_test()
                 group: "test_control"
             ToggleButton:
                 text: "Stop"
@@ -131,16 +142,22 @@
                 text: "Vitesse Asc. [m/h]"
             Label: 
                 text: ""
-        ScrollView:
-            do_scroll_x: False
-            do_scroll_y: True
-            GridLayout:
-                id: events_grid
-                cols: 5
-                size_hint_y: None
-                height: self.minimum_height
-                row_default_height: "30dp"
-                row_force_default: True
+
+        BoxLayout:         # conteneur pour ScrollView
+            orientation: 'vertical'
+            size_hint_y: 1   # prend tout l'espace restant dans la zone 0.3
+            ScrollView:
+                do_scroll_x: False
+                do_scroll_y: True
+                bar_width: 10
+                size_hint_y: 1
+                GridLayout:
+                    id: events_grid
+                    cols: 5
+                    size_hint_y: None
+                    height: self.minimum_height
+                    row_default_height: "30dp"
+                    row_force_default: True
         BoxLayout:
             size_hint_y: None
             height: "40dp"

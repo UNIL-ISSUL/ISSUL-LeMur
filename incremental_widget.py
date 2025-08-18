@@ -321,23 +321,50 @@ class IncrementalWidget(BoxLayout):
         self.update_graph()
     
     ### Start/Stop Test section ***************************
+    def goto_0(self):
+        #do not init id test is on_going
+        if self.test_running:
+            return
+        #get angle at time 0
+        angle = self.get_angle(0)
+        #move lift
+        if self.controller:
+            self.controller.set_lift_angle(angle)
+
     def start_test(self):
+        #if test is not running init 
         if not self.test_running:
             #clear events
             self.delete_event(None)
             #init running state
             self.test_running = True
             self.test_start_time = time.time()
-            #schedule update
-            self.time_update_event = Clock.schedule_interval(self.update_test_time, 0.1)
-            #move treadmill and start band if connected
+            self.pause_time = 0
+            self.pause_elapsed_time = 0
+            #reset treadmill points
+            self.treadmill_points = []
+        #resume if test was paused
+        else :
+            self.pause_elapsed_time = time.time() - self.pause_time
+
+        #schedule update
+        self.time_update_event = Clock.schedule_interval(self.update_test_time, 0.1)
+        #move treadmill and start band if connected
+        if self.controller :
+            #update treamill speed and angle
+            self.update_test_time(0.1)
+            #start_belt
+            self.controller.start_belt()
+
+    def pause_test(self):
+        #pause only if test is running
+        if self.test_running:
+            #save time and stop update
+            self.pause_time = time.time()
+            self.time_update_event.cancel()
+            #stop belt
             if self.controller :
-                #reset treadmill points
-                self.treadmill_points = []
-                #update treamill speed and angle
-                self.update_test_time(0.1)
-                #start_belt
-                self.controller.start_belt()
+                self.controller.pause_belt()
 
     def stop_test(self):
         if self.test_running:
@@ -350,10 +377,10 @@ class IncrementalWidget(BoxLayout):
                 self.time_update_event = None
 
     def update_test_time(self, dt):
-        if not self.test_running:
+        if not self.test_running or len(self.test_points) == 0 :
             return
 
-        self.elapsed_time = time.time() - self.test_start_time
+        self.elapsed_time = time.time() - self.test_start_time - self.pause_elapsed_time
         t = self.elapsed_time
 
         #stop test is the elapsed time is greater than maximum time
