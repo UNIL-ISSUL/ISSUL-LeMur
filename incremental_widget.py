@@ -400,19 +400,14 @@ class IncrementalWidget(BoxLayout):
             controller.set_lift_angle(angle)
             # Store the treadmill point
             actual_speed = controller.get_belt_speed()
-            actual_angle = controller.get_lift_angle()  
+            actual_angle = controller.get_lift_angle()
+            actual_v_speed = actual_speed * sin(radians(actual_angle)) * 1000  # Convert km/h to m/h
             self.treadmill_points.append({
                 'time': t,
                 'speed': actual_speed,
                 'incl': actual_angle,
-                'asc': actual_speed * sin(radians(actual_angle)) * 1000  # Convert km/h to m/h
+                'asc': actual_v_speed
             })
-
-        # Mettre à jour l'affichage du temps et des valeurs actuelles
-        #self.ids.time_display.text = f"{int(t)} s"
-        #self.ids.speed_display.text = f"{speed:.2f} km/h"
-        #self.ids.angle_display.text = f"{angle:.2f} °"
-        #self.ids.asc_display.text = f"{self.get_speed_asc(t):.2f} m/h"
 
         # Positionner le point sur le graphique
         self.update_graph_dot(t, self._interpolate(t,self.graph_variable))
