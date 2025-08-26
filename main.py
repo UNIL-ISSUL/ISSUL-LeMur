@@ -17,6 +17,8 @@ from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.uix.screenmanager import ScreenManager
+from utils.treadmill_layout import TreadmillLayout
+
 
 
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
@@ -114,6 +116,9 @@ class NumericDisplay(Label):
     target = NumericProperty(0)
     has_target = BooleanProperty(False)
 
+class Controller(BoxLayout):
+    font_size = NumericProperty(24)  # valeur par défaut
+
 class StatusDisplay(BoxLayout) :
     name = StringProperty("value")
     active = BooleanProperty(False)
@@ -167,12 +172,7 @@ class LeMurApp(App):
     elapsed_time = NumericProperty(0)
     elapsed_distance = NumericProperty(0)
     elapsed_elevation = NumericProperty(0)
-    safety_left = BooleanProperty(False)
-    safety_right = BooleanProperty(False,rebind=True)
-    safety_front = BooleanProperty(False)
-    safety_back = BooleanProperty(False)
-    any_safety = BooleanProperty(False)
-    safety_emergency = BooleanProperty(False)
+    safeties = ObjectProperty(None)
     steps_active = BooleanProperty(False)
     speed_text = StringProperty("Vitesse bande")
     steps_background_color = ColorProperty([0, 0, 0,1])
@@ -192,10 +192,18 @@ class LeMurApp(App):
     def __init__(self, revpi, **kwargs):
         super(LeMurApp,self).__init__(**kwargs)
         self.revpi = revpi
+        self.safeties = {
+            "front": True,
+            "back": True,
+            "left": True,
+            "right": True,
+            "emergency": True
+        }
 
     def build(self):
         #define manual widget ids
         self.manual_widget_ids = self.root.ids.screen_manager.ids.manual_widget.ids
+        self.controller_widget = self.root.ids.controller
         self.incremental_widget = self.root.ids.screen_manager.ids.incr_widget
         #attach controllet to widget
         self.incremental_widget.set_controller(self.revpi)
@@ -268,27 +276,18 @@ class LeMurApp(App):
     def update_values(self,_) :
         if self.revpi :
             #safety
-            self.safety_right = self.revpi.rpi.io.secu_right.value
-            self.safety_left = self.revpi.rpi.io.secu_left.value
-            self.safety_front = self.revpi.rpi.io.secu_front.value
-            self.safety_back = self.revpi.rpi.io.secu_back.value
-            self.safety_emergency = self.revpi.rpi.io.secu_emergency.value
-            self.any_safety = self.safety_right or self.safety_left or self.safety_front or self.safety_back or self.safety_emergency
+            self.safeties = self.revpi.get_safety_state()
             #real time value
             self.tilt_value = self.revpi.get_lift_angle()
             self.belt_speed_value = self.revpi.get_belt_speed(self.steps_active)
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             #modbus status
-            self.revpi.rpi.io.use_steps.value = self.steps_active   #send steps status to modbus
+            self.revpi.set_steps(self.steps_active)   #send steps status to modbus
             #copy encoder feedback to VFD PID disable (inverted logic) pin
             self.revpi.rpi.io.belt_pid_enable.value = self.revpi.rpi.io.encoder_feedback.value
 
         else :
             self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
-            self.any_safety = False
-        
-        #update speed target
-        #self.change_belt_speed()
     
     def update_running(self,_) :
 
@@ -299,8 +298,8 @@ class LeMurApp(App):
         self.last_time = time.time()
 
     def start(self) :
-        stop_widget = self.manual_widget_ids.controller.ids['stop']
-        start_widget = self.manual_widget_ids.controller.ids['start']
+        stop_widget = self.controller_widget.ids['stop']
+        start_widget = self.controller_widget.ids['start']
         if start_widget.state == 'down' :
             self.running_event = Clock.schedule_interval(self.update_running,0.1)
             stop_widget.state = 'normal'
@@ -318,8 +317,8 @@ class LeMurApp(App):
         #    self.event_ramp = Clock.schedule_interval(self.update_ramp,self.root.ids['ramp'].step_duration_s)
     
     def stop(self) :
-        stop_widget = self.manual_widget_ids.controller.ids['stop']
-        start_widget = self.manual_widget_ids.controller.ids['start']
+        stop_widget = self.controller_widget.ids['stop']
+        start_widget = self.controller_widget.ids['start']
         if stop_widget.state == 'down' :
             stop_widget.state = 'down'
             start_widget.state = 'normal'

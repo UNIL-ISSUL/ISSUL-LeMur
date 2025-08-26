@@ -1,7 +1,7 @@
 #CONFIGURATION FILE TO CONFIGURE LE_MUR
 
 #REVOLUTION PI 
-CYCLETIME_MS : 50       #cycle time in ms
+CYCLETIME_MS : 10       #cycle time in ms
 
 #MECAHNICAL CHARATERISTICS
 BELT_LENGTH_MM : 2620   # distance between wheel and pivot
@@ -10,20 +10,7 @@ Z_MOTOR : 26            # tooth on motor side
 Z_BELT : 64             # tooth on belt side
 RADIUS_CYL_MM : 93      # Raduis of belt cynlinder on motor side 186/2
 
-#LIFT MOTOR PARAMETERS
-LIFT_FREQ_HZ : 50       # max frequency during travel
-LIFT_HZ2mV  : 100       # conversion factor to output frequency to mV
-LIFT_ACC_S : 0.5        # acc time from 0Hz to 50Hz
-LIFT_DEC_S : 0.5        # decelaration time from 50Hz to 0Hz
-LIFT_MM_TR : 2.5        # pas de la vis (10mm) avec ecrou d'un ration 1/4
-LIFT_TR_MIN : 1400      # vitesse nominale du moteur en tr/min 
-
-#CALIBRATION FACTOR TO CONVERT TILT OUTPUT in mV to DEGREES
-CAL_TILT_A : 0.019190669 # Slope
-CAL_TILT_B : -2.902368371 # Offset
-
-#CONVERT belt or steps speed to Hz
-CONV_BELT2HZ : 2.503
-CONV_STEPS2HZ : 1.875
-CONV_HZ2BELT : 0.399
-CONV_HZ2STEPS : 0.533
+#BELT SPEED 
+BELT_MAX_FREQUENCY_HZ : 100
+BELT_MAX_SPEED_KMH : 40
+BELT_KMH2HZ_factor : 1.025   # experimental factor to convert km/h to Hz

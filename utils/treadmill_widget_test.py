@@ -1,7 +1,6 @@
 
 from kivy.app import App
-from treadmill_widget import TreadmillWidget
-from treadmill_stack import TreadmillStackLayout
+from utils.treadmill_layout import TreadmillStackLayout
 
 class TreadmillApp(App):
     def build(self):

@@ -346,7 +346,7 @@ class IncrementalWidget(BoxLayout):
             self.treadmill_points = []
         #resume if test was paused
         else :
-            self.pause_elapsed_time = time.time() - self.pause_time
+            self.pause_elapsed_time += time.time() - self.pause_time
 
         #schedule update
         self.time_update_event = Clock.schedule_interval(self.update_test_time, 0.1)

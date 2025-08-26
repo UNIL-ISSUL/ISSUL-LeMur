@@ -13,7 +13,7 @@ def bool2state(value):
     """Convertit un booléen en état de bouton ('down' ou 'normal')"""
     return 'down' if value else 'normal'
 
-class TreadmillStackLayout(StackLayout):
+class TreadmillLayout(StackLayout):
      # Variables de configuration
     security_top = BooleanProperty(False)
     security_bottom = BooleanProperty(False)
