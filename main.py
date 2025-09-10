@@ -22,7 +22,10 @@ from utils.treadmill_layout import TreadmillLayout
 
 
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
-import controler
+#import controler
+import hardware
+import treadmill
+from treadmill import compute_vertical_speed_mh, compute_belt_speed, compute_tilt
 from incremental_widget import IncrementalWidget
 import math
 import time
@@ -30,16 +33,6 @@ from time import strftime, localtime, gmtime, sleep
 
 #force keyboard to be shown
 #Config.set('kivy', 'keyboard_mode', 'systemanddock')
-
-def compute_vertical_speed_mh(tilt_degree,belt_speed_kmh):
-    return math.sin(math.radians(tilt_degree)) * belt_speed_kmh * 1000
-
-def compute_belt_speed(tilt_degree,vertical_speed_mh):
-    return vertical_speed_mh / (math.sin(math.radians(tilt_degree)) * 1000)
-
-def compute_tilt(belt_speed_kmh,vertical_speed_mh) :
-    temp = vertical_speed_mh / (belt_speed_kmh*1000)
-    return math.degrees(math.asin(temp))
 
 class MainScreenManager(ScreenManager):
     pass
@@ -160,24 +153,20 @@ class Ramp(BoxLayout) :
 class LeMurApp(App):
     #manual_widget_ids
     manual_widget_ids = None
-    #revpi reference
+    #treadmill Object
     revpi = None
+    treadmill_status = ObjectProperty(None) 
     #UI properties
     belt_speed_target = NumericProperty(2.5)
-    belt_speed_value = NumericProperty(0)
     tilt_target = NumericProperty(27.5)
-    tilt_value = NumericProperty(0)
     vertical_speed_target = NumericProperty(1000)
-    vertical_speed_value = NumericProperty()
-    elapsed_time = NumericProperty(0)
-    elapsed_distance = NumericProperty(0)
-    elapsed_elevation = NumericProperty(0)
-    safeties = ObjectProperty(None)
+    #vertical_speed_control
+    vertical_speed_mode = 0 #0 = manula, 1 = tilt, 2 = belt speed
+    #steps management
     steps_active = BooleanProperty(False)
     speed_text = StringProperty("Vitesse bande")
     steps_background_color = ColorProperty([0, 0, 0,1])
-    #vertical_speed_control
-    vertical_speed_mode = 0 #0 = manula, 1 = tilt, 2 = belt speed
+    
     #running properties
     running_event = None
     start_time = 0
@@ -189,51 +178,36 @@ class LeMurApp(App):
     safety_F_widget = safety_B_widget = safety_L_widget = safety_R_widget = safety_E_widget = ObjectProperty(None)
     
     #overcharge init to define rpi instance
-    def __init__(self, revpi, **kwargs):
+    def __init__(self, treadmill, **kwargs):
         super(LeMurApp,self).__init__(**kwargs)
-        self.revpi = revpi
-        self.safeties = {
-            "front": True,
-            "back": True,
-            "left": True,
-            "right": True,
-            "emergency": True
-        }
+        self.treadmill = treadmill
+        self.treadmill_status = treadmill.update()
 
     def build(self):
         #define manual widget ids
-        self.manual_widget_ids = self.root.ids.screen_manager.ids.manual_widget.ids
-        self.controller_widget = self.root.ids.controller
-        self.incremental_widget = self.root.ids.screen_manager.ids.incr_widget
-        #attach controllet to widget
-        self.incremental_widget.set_controller(self.revpi)
-        #attach event
+        self.screen_manager = self.root.ids.screen_manager
+        self.manual_widget_ids = self.screen_manager.ids.manual_widget.ids
+        self.incremental_widget = self.screen_manager.ids.incr_widget
+        #attach treadmill to widget
+        self.incremental_widget.set_treadmill(self.treadmill)
+        #attach update event
         Clock.schedule_interval(self.update_values,0.1)
-        #update belt_speed
-        if self.revpi :
-            self.tilt_target = self.revpi.get_lift_angle()
+        #update treadmill
+        self.treadmill.update()
+        self.tilt_target = self.treadmill.get_lift_angle()
         self.change_belt_speed()
 
     def on_stop(self):
-        print('bye bye')
-        if self.revpi :
-            self.revpi.stop_all()
+        self.treadmill.shutdown()
+        Logger.info(f"Main: on_stop signal received")
 
     def move_lift(self,_=None) :
-        Logger.info("Tilt target updated : " + str(self.tilt_target))
-        if self.revpi :
-            self.revpi.set_lift_angle(self.tilt_target)
-        else :
-            self.tilt_value = self.tilt_target
-            
-    
-    def change_belt_speed(self,_=None) :
-        Logger.info("belt speed target updated : " + str(self.belt_speed_target))
+        Logger.info("Main : Tilt target updated " + str(self.tilt_target))
+        self.treadmill.set_lift_angle(self.tilt_target)
 
-        if self.revpi :
-            self.revpi.set_belt_speed(self.belt_speed_target)
-        else :
-            self.belt_speed_value = self.belt_speed_target
+    def change_belt_speed(self,_=None) :
+        Logger.info("Main : belt speed target updated " + str(self.belt_speed_target))
+        self.treadmill.set_belt_speed(self.belt_speed_target)
     
     def toggle_steps(self,active) :
         color = [0, 0, 0]
@@ -252,85 +226,43 @@ class LeMurApp(App):
         #    Color(color[0], color[1], color[2], 1)
         #    Rectangle(pos=self.root.ids['steps_grid'].pos, size=self.root.ids['steps_grid'].size)
     
-    def init_ramp(self,start_speed) :
-        #lock tilt screen
-        self.manual_widget_ids.tilt.locked = True
-        #set initial speed
-        self.manual_widget_ids.belt_speed.value = start_speed
-        #move lift to initial value
-        self.move_lift(0)
-    
-    def update_ramp(self,dt)  :
-        #cancel event scheduling if ramp is over
-        ramp =self.manual_widget_ids.ramp
-        belt_speed = self.manual_widget_ids.belt_speed.value
-        if  (belt_speed >= ramp.final_speed and ramp.sign > 0) or (belt_speed <= ramp.final_speed and ramp.sign < 0) :
-            if self.event_ramp : 
-                Clock.unschedule(self.event_ramp)
-                Clock.schedule_once(self.stop)
-                return 
-        #update 
-        self.manual_widget_ids.belt_speed.value += self.manual_widget_ids.ramp.sign * self.manual_widget_ids.ramp.step_speed
-        Clock.schedule_once(self.move_lift)
-    
     def update_values(self,_) :
+        #update incremental widget graph and setpoints if on incremental tab and treadmill is running
+        if self.screen_manager.current == 'incremental_tab' and self.treadmill.is_running() :
+            #update test return true if test is finished
+            test_finished = self.incremental_widget.update_test(0.1)
+            if test_finished:
+                Logger.info("Main : Test finished")
+                self.root.ids.controller.ids.stop.trigger_action()  #stop treadmill if test is done
+
+        #update treadmill status
+        self.treadmill_status = self.treadmill.update()
+        
+        
         if self.revpi :
-            #safety
-            self.safeties = self.revpi.get_safety_state()
-            #real time value
-            self.tilt_value = self.revpi.get_lift_angle()
-            self.belt_speed_value = self.revpi.get_belt_speed(self.steps_active)
-            self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
             #modbus status
             self.revpi.set_steps(self.steps_active)   #send steps status to modbus
             #copy encoder feedback to VFD PID disable (inverted logic) pin
             self.revpi.rpi.io.belt_pid_enable.value = self.revpi.rpi.io.encoder_feedback.value
 
-        else :
-            self.vertical_speed_value = compute_vertical_speed_mh(self.tilt_value,self.belt_speed_value)
+    def start(self, instance) :
+        #configure incremental widget
+        if self.screen_manager.current == 'incremental_tab' :
+            #reset event if any
+            self.incremental_widget.delete_event()
+        #start treadmill
+        if instance.state == 'down' :
+            self.treadmill.start()
     
-    def update_running(self,_) :
+    def pause(self, instance) :
+        #pause treadmill
+        if instance.state == 'down' :
+            self.treadmill.pause()
 
-        self.elapsed_time = time.time() - self.start_time
-        delta_t = time.time() - self.last_time
-        self.elapsed_distance += (self.belt_speed_value * 1000 / 3600) * delta_t
-        self.elapsed_elevation += (self.vertical_speed_value / 3600) * delta_t
-        self.last_time = time.time()
-
-    def start(self) :
-        stop_widget = self.controller_widget.ids['stop']
-        start_widget = self.controller_widget.ids['start']
-        if start_widget.state == 'down' :
-            self.running_event = Clock.schedule_interval(self.update_running,0.1)
-            stop_widget.state = 'normal'
-            start_widget.state = 'down'
-            self.start_time = time.time()
-            self.last_time = time.time()
-            self.elapsed_time = 0
-            self.elapsed_distance = 0
-            self.elapsed_elevation = 0
-            if self.revpi :
-                self.revpi.start_belt()
-        else :
-            start_widget.state = 'down'
-        #if self.root.ids['ramp'].state :
-        #    self.event_ramp = Clock.schedule_interval(self.update_ramp,self.root.ids['ramp'].step_duration_s)
-    
-    def stop(self) :
-        stop_widget = self.controller_widget.ids['stop']
-        start_widget = self.controller_widget.ids['start']
-        if stop_widget.state == 'down' :
-            stop_widget.state = 'down'
-            start_widget.state = 'normal'
-            if self.revpi :
-                self.revpi.stop_belt()
-            if self.running_event :
-                self.running_event.cancel()
-        else :
-            stop_widget.state = 'down'
-        #if self.root.ids['ramp'].state :
-        #    if self.event_ramp : 
-        #        self.event_ramp.cancel()
+    def stop(self, instance) :
+        #stop treadmill
+        if instance.state == 'down' :
+            self.treadmill.stop()
 
     def update_targets(self,instance,manual=False) :
         if self.vertical_speed_mode == 0 :  #vertical speed in manual mode
@@ -348,18 +280,21 @@ class LeMurApp(App):
             self.vertical_speed_target = compute_vertical_speed_mh(self.tilt_target,self.belt_speed_target)
         
         if self.vertical_speed_mode == 1 :  #vertical speed in tilt mode
+            
             #update tilt
             if instance == self.manual_widget_ids.tilt :
-                if instance.value == 0 :
-                    instance.value = 0.01
                 #compute belt speed target to check for max value
                 belt_speed_target = compute_belt_speed(instance.target,self.vertical_speed_target)
+                if belt_speed_target == False :
+                    return
                 if belt_speed_target > self.manual_widget_ids.belt_speed.max_value:
-                    instance.target = compute_tilt(self.manual_widget_ids.belt_speed.max_value,self.vertical_speed_target)
-                    pass
+                    target  = compute_tilt(self.manual_widget_ids.belt_speed.max_value,self.vertical_speed_target)
+                    if target == False :
+                        return
+                    instance.target = target
+                
                 self.tilt_target = instance.target
                 #compute acutal belt speed target
-                #belt_speed_target = compute_belt_speed(instance.value,self.vertical_speed_target)
                 self.belt_speed_target = compute_belt_speed(self.tilt_target,self.vertical_speed_target)
                 if instance.auto_update or manual :
                     self.move_lift()
@@ -368,39 +303,27 @@ class LeMurApp(App):
             if instance == self.manual_widget_ids.vertical_speed :
                 #compute belt speed target to check for max value
                 belt_speed_target = compute_belt_speed(self.tilt_target,instance.target)
+                if belt_speed_target == False :
+                    return
+                #check for max value
                 if belt_speed_target > self.manual_widget_ids.belt_speed.max_value :
                     instance.target = compute_vertical_speed_mh(self.tilt_target,self.manual_widget_ids.belt_speed.max_value)
-                    pass
                 self.vertical_speed_target = instance.target
                 #compute acutal belt speed target
                 #belt_speed_target = compute_belt_speed(self.tilt_target,instance.value)
                 self.belt_speed_target = compute_belt_speed(self.tilt_target,self.vertical_speed_target)
                 if self.manual_widget_ids.vertical_speed.auto_update or manual:
                     self.change_belt_speed()
-            
-            #update and compute belt speed
-            #belt_speed_target = compute_belt_speed(self.tilt_target,self.vertical_speed_target)
-            #self.belt_speed_target = belt_speed_target
-            #if instance == self.root.ids['vertical_speed'] :
-            #    if self.root.ids['vertical_speed'].auto_update or manual:
-            #        self.change_belt_speed()
-            #if instance == self.root.ids['tilt'] :
-            #    if self.root.ids['tilt'].auto_update or manual:
-            #        self.change_belt_speed()
+    
         
         if self.vertical_speed_mode == 2 :  #vertical speed in belt speed mode
+            
             #update belt speed
             if instance == self.manual_widget_ids.belt_speed :
-                #check for 0 value to avoid divition by 0 in temp
-                if instance.target == 0 :
-                    instance.target = 0.1
-                temp = self.vertical_speed_target / (instance.target*1000)
-                #asin(x) x is in the range [-1, 1]
-                #no need to check for negative value since spped are positive
-                if temp > 1 :
-                    instance.target = self.vertical_speed_target / 1000  #then temp is 1
                 #compute estimated tilt
                 tilt_target = compute_tilt(instance.target,self.vertical_speed_target)
+                if tilt_target == False :
+                    return
                 #check for max value
                 if tilt_target > self.manual_widget_ids.tilt.max_value :
                     instance.target = compute_belt_speed(self.manual_widget_ids.tilt.max_value,self.vertical_speed_target)
@@ -409,19 +332,13 @@ class LeMurApp(App):
                     instance.target = compute_belt_speed(self.manual_widget_ids.tilt.min_value,self.vertical_speed_target)
                 #apply value
                 self.belt_speed_target = instance.target
-                #move if applicable
-                if instance.auto_update or manual:
-                    self.change_belt_speed()
+                    
             #update vertical speed
             if instance == self.manual_widget_ids['vertical_speed'] :
-                #check for 0 value to avoid divition by 0 in temp
-                temp = instance.target / (self.belt_speed_target*1000)
-                #asin(x) x is in the range [-1, 1]
-                #no need to check for negative value since spped are positive
-                if temp > 1 :
-                    instance.target = self.belt_speed_target * 1000  #then temp is 1
                 #compute estimated tilt
                 tilt_target = compute_tilt(self.belt_speed_target,instance.target)
+                if tilt_target == False :
+                    return
                 #check for max value
                 if tilt_target > self.manual_widget_ids['tilt'].max_value :
                     instance.target = compute_vertical_speed_mh(self.manual_widget_ids['tilt'].max_value,self.belt_speed_target)
@@ -430,13 +347,8 @@ class LeMurApp(App):
                     instance.target = compute_vertical_speed_mh(self.manual_widget_ids['tilt'].min_value,self.belt_speed_target)
                 #apply value
                 self.vertical_speed_target = instance.target
-            
-            #compute tilt
-            tilt_target = compute_tilt(self.belt_speed_target,self.vertical_speed_target)
-            #set tilt to UI
-            self.manual_widget_ids['tilt'].target = tilt_target
-            #set tilt to backend
-            self.tilt_target = tilt_target
+
+            self.tilt_target = compute_tilt(self.belt_speed_target,self.vertical_speed_target)
             #move if applicable
             if self.manual_widget_ids['vertical_speed'].auto_update or manual:
                 self.move_lift()   
@@ -463,10 +375,12 @@ class LeMurApp(App):
             Logger.info("UI : Mode changed : "+instance.text)
  
 if __name__ == '__main__':
-    if controler.is_raspberry_pi() : 
-        lemur = controler.revPI()
-        lemur.mainloop()
+    if hardware.is_raspberry_pi() : 
+        revpi = hardware.revPI()
+        #lemur.mainloop()
+        Logger.info("Main.py : Execute on a revpi")
     else :
-        print("I am a PC")
-        lemur = None
-    LeMurApp(lemur).run()
+        Logger.info("Main.py : Execute on a PC")
+        revpi = None
+    treadmill = treadmill.TreadmillController(revpi)
+    LeMurApp(treadmill).run()

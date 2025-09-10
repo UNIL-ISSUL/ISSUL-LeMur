@@ -1,7 +1,7 @@
 from kivy.graphics import Rectangle
 from kivy.uix.stacklayout import StackLayout
 from kivy.uix.togglebutton import ToggleButton
-from kivy.properties import BooleanProperty, NumericProperty
+from kivy.properties import BooleanProperty, NumericProperty, ObjectProperty
 
 def make_vertical_text(text):
     """Ajoute des \n entre chaque caractère pour un affichage vertical"""
@@ -15,11 +15,7 @@ def bool2state(value):
 
 class TreadmillLayout(StackLayout):
      # Variables de configuration
-    security_top = BooleanProperty(False)
-    security_bottom = BooleanProperty(False)
-    security_left = BooleanProperty(False)
-    security_right = BooleanProperty(False)
-    emergency_stop = BooleanProperty(False)   # True / False
+    safeties = ObjectProperty({})
     mode_belt = BooleanProperty(False)  # True pour "belt", False pour "step"
     font_size = NumericProperty(5)
     
@@ -27,11 +23,7 @@ class TreadmillLayout(StackLayout):
         #init and add bind function
         super().__init__(orientation="lr-tb", **kwargs)
         self.bind(
-            security_top=self._update,
-            security_bottom=self._update,
-            security_left=self._update,
-            security_right=self._update,
-            emergency_stop=self._update,
+            safeties=self._update,
             mode_belt=self._update,
             font_size=self._update_font_size
         )
@@ -41,34 +33,34 @@ class TreadmillLayout(StackLayout):
             self.emergency_stop_widget.append(SecurityToggleButton(size_hint=(0.15,0.15),
                                                            text=make_vertical_text('STOP'),
                                                            font_size=self.font_size,
-                                                           state=bool2state(self.emergency_stop),
+                                                           state='down',
                                                            on_press=self._update))
         self.top_widget = SecurityToggleButton(size_hint=(0.7,0.15),
                                        text= 'SÉCURITÉ AVANT',
                                        font_size=self.font_size,
-                                       state=bool2state(self.security_top),
+                                       state='down',
                                        on_press=self._update)
         self.left_widget = SecurityToggleButton(size_hint=(0.15,0.7),
                                         text = make_vertical_text('SÉCURITÉ GAUCHE'),
                                         font_size=self.font_size,
                                         halign='center',
-                                        state=bool2state(self.security_left),
+                                        state='down',
                                         on_press=self._update)
         self.center_widget = ToggleButton(size_hint=(0.7,0.7),
                                           text='ESCALIER' if self.mode_belt else 'BANDE',
                                           font_size=self.font_size,
-                                          state=bool2state(self.mode_belt),
+                                          state='down',
                                           on_press=self._update)
         self.right_widget = SecurityToggleButton(size_hint=(0.15,0.7),
                                          text=make_vertical_text('SÉCURITÉ DROITE'),
                                          font_size=self.font_size,
                                          halign='center',
-                                         state=bool2state(self.security_right),
+                                         state='down',
                                          on_press=self._update)
         self.bottom_widget = SecurityToggleButton(size_hint=(0.7,0.15),
                                           text='SÉCURITÉ ARRIÈRE',
                                           font_size=self.font_size,
-                                          state=bool2state(self.security_bottom),
+                                          state='down',
                                           on_press=self._update)
         #add widgets
         self.add_widget(self.emergency_stop_widget[0])
@@ -83,13 +75,13 @@ class TreadmillLayout(StackLayout):
 
     def _update(self, *args):
         for i in range(4):
-            self.emergency_stop_widget[i].state = bool2state(self.emergency_stop)
-        self.top_widget.state = bool2state(self.security_top)
-        self.left_widget.state = bool2state(self.security_left)
+            self.emergency_stop_widget[i].state = bool2state(self.safeties.get('emergency', True))
+        self.top_widget.state = bool2state(self.safeties.get('top', True))
+        self.left_widget.state = bool2state(self.safeties.get('left', True))
         self.center_widget.state = bool2state(self.mode_belt)
         self.center_widget.text = 'ESCALIER' if self.mode_belt else 'BANDE'
-        self.right_widget.state = bool2state(self.security_right)
-        self.bottom_widget.state = bool2state(self.security_bottom)
+        self.right_widget.state = bool2state(self.safeties.get('right', True))
+        self.bottom_widget.state = bool2state(self.safeties.get('bottom', True))
 
     def _update_font_size(self, *args):
         for widget in self.children:

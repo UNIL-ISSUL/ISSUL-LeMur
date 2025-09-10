@@ -1,4 +1,4 @@
-from kivy_garden.graph import Graph, MeshLinePlot, LinePlot
+from kivy_garden.graph import Graph, MeshLinePlot, ScatterPlot
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
 from kivy.utils import platform
@@ -7,12 +7,14 @@ from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.properties import NumericProperty
 from kivy.clock import Clock
 from kivy.lang import Builder
 from math import radians, sin, degrees, asin, floor, ceil, log10
 import numpy as np
 import time, csv, os
 from datetime import datetime
+from treadmill import compute_tilt, compute_belt_speed, compute_vertical_speed_mh
 
 
 def parse(text_widget):
@@ -88,24 +90,23 @@ def compute_axis_range(values, padding_ratio=0.05, max_minor=5):
 
 class IncrementalWidget(BoxLayout):
 
+    zoom = NumericProperty(1)
+
     def __init__(self, **kwargs):
         Builder.load_file("incremental_widget.kv")
         super().__init__(**kwargs)
         Clock.schedule_once(self._delayed_init)
         Clock.schedule_once(self._post_init)
         self.test_running = False
-        self.test_start_time = None
-        self.elapsed_time = 0
-        self.time_update_event = None
         self.current_dot = None  # pour afficher le rond d'avancement
         self.actual_plot = None  # pour afficher les valeurs actuels
-        self.controller = None
+        self.treadmill = None
 
     ### table section ***************************
     def _delayed_init(self, *args):
         self.points = []
         self.test_points = []
-        self.treadmill_points = []
+        self.elapsed_time = 0
         self.add_point()
 
     def handle_tab(self, instance):
@@ -227,7 +228,8 @@ class IncrementalWidget(BoxLayout):
         # Initialize the graph and its properties
         self.events = []    # List to store events for the graph {"time": ..., "speed": ..., "angle": ..., "comment": ""}
         self.graph_variable = 'inclinaison'
-        self.plot = MeshLinePlot(color=[0, 1, 0, 1])
+        #self.plot = MeshLinePlot(color=[0, 1, 0, 1])
+        self.plot = ScatterPlot(color=[0, 1, 0, 1],point_size=5)
         self.graph = Graph(xlabel='Temps (s)', ylabel='Inclinaison (°)',
                            x_ticks_minor=5, x_ticks_major=10,
                            y_ticks_minor=5, y_ticks_major=10,
@@ -250,6 +252,7 @@ class IncrementalWidget(BoxLayout):
             }.get(var_name, '')
             self.graph.ylabel = unit
         self.update_graph()
+        self.update_graph_dot(self.treadmill.get_treadmill_points() if self.treadmill else [])
 
     def update_graph(self):
         if not self.test_points:
@@ -257,9 +260,14 @@ class IncrementalWidget(BoxLayout):
         # Ajustement dynamique des axes  
         x_vals = [p['time'] for p in self.test_points]
         y_vals = [p[self.graph_variable] for p in self.test_points]
+        #concatenate with treadmill points if any
+        if self.treadmill:
+            treadmill_points = self.treadmill.get_treadmill_points()
+            if treadmill_points:
+                y_vals += [p[self.graph_variable] for p in treadmill_points]
         #adjust graph to data
         xmin, xmax, xmajor, xminor = compute_axis_range(x_vals,0)
-        ymin, ymax, ymajor, yminor = compute_axis_range(y_vals,0.1)
+        ymin, ymax, ymajor, yminor = compute_axis_range(y_vals,0.1) 
 
         # Set the graph limits
         self.graph.xmin = xmin
@@ -271,8 +279,31 @@ class IncrementalWidget(BoxLayout):
         self.graph.y_ticks_major = ymajor
         self.graph.x_ticks_minor = xminor
         self.graph.y_ticks_minor = yminor
+        #apply zoom
+        self.update_graph_zoom(self.zoom)
+        
         #add the points to the plot
         self.plot.points = [(p['time'], p[self.graph_variable]) for p in self.test_points]
+    
+    def update_graph_zoom(self, value):
+        self.zoom = value
+        #only zoom on x axis the graph
+        t = self.elapsed_time
+        if not self.test_points:
+            return
+        xmin, xmax, xmajor, xminor = compute_axis_range([p['time'] for p in self.test_points],0)
+        #zoom range
+        new_range = (xmax - xmin) / value
+        if value > 1 :
+            #new x range centered on t
+            self.graph.xmin = floor(t)
+            self.graph.xmax = ceil(t + new_range)
+            self.graph.x_ticks_major = max(1, floor((self.graph.xmax - self.graph.xmin) / 10))
+        else: #reset to full range
+            self.graph.xmin = xmin
+            self.graph.xmax = xmax
+            self.graph.x_ticks_major = xmajor
+        self.graph.x_ticks_minor = xminor
 
     ### Events section ***************************
     def refresh_events(self):
@@ -286,9 +317,6 @@ class IncrementalWidget(BoxLayout):
             grid.add_widget(Button(text="Supprimer", on_release=lambda btn, ev=event: self.delete_event(ev)))
     
     def add_event(self):
-        #add event only if the test is running
-        if not self.test_running:
-            return
         #add a new event at the current time
         current_time = self.elapsed_time  # ou variable que tu utilises
         speed = self.get_speed(current_time)
@@ -305,7 +333,7 @@ class IncrementalWidget(BoxLayout):
         line.points = [(time_s, 0), (time_s, 1e9)]
         self.graph.add_plot(line)
     
-    def delete_event(self, event):
+    def delete_event(self, event=None):
         #if event is None call recusrsively the funtion for each event
         if event is None:
             for ev in self.events[:]:
@@ -322,6 +350,27 @@ class IncrementalWidget(BoxLayout):
         self.update_graph()
     
     ### Start/Stop Test section ***************************
+    
+    #update incremental tests
+    def update_test(self, delta_t):
+        #update graph dot position
+        self.update_graph_dot(self.treadmill.get_treadmill_points())
+        #get current time
+        current_time = self.treadmill.get_elapsed_time()
+        self.elapsed_time = current_time
+        #udate zoom if is greater than graph xmax
+        if self.zoom > 1 and current_time >= self.graph.xmax :
+            self.update_graph_zoom(self.zoom)
+        #get setpoints for current time
+        angle = self.get_angle(current_time+delta_t)
+        speed = self.get_speed(current_time+delta_t)
+        #set treadmill setpoints
+        self.treadmill.set_lift_angle(angle)
+        self.treadmill.set_belt_speed(speed)
+        #check if current >= last point time
+        test_finished = self.test_points and current_time >= self.test_points[-1]['time']
+        return test_finished
+    
     def goto_0(self):
         #do not init id test is on_going
         if self.test_running:
@@ -329,94 +378,19 @@ class IncrementalWidget(BoxLayout):
         #get angle at time 0
         angle = self.get_angle(0)
         #move lift
-        if self.controller:
-            self.controller.set_lift_angle(angle)
+        if self.treadmill:
+            self.treadmill.set_lift_angle(angle)
 
-    def start_test(self):
-        #if test is not running init 
-        if not self.test_running:
-            #clear events
-            self.delete_event(None)
-            #init running state
-            self.test_running = True
-            self.test_start_time = time.time()
-            self.pause_time = 0
-            self.pause_elapsed_time = 0
-            #reset treadmill points
-            self.treadmill_points = []
-        #resume if test was paused
-        else :
-            self.pause_elapsed_time += time.time() - self.pause_time
-
-        #schedule update
-        self.time_update_event = Clock.schedule_interval(self.update_test_time, 0.1)
-        #move treadmill and start band if connected
-        if self.controller :
-            #update treamill speed and angle
-            self.update_test_time(0.1)
-            #start_belt
-            self.controller.start_belt()
-
-    def pause_test(self):
-        #pause only if test is running
-        if self.test_running:
-            #save time and stop update
-            self.pause_time = time.time()
-            self.time_update_event.cancel()
-            #stop belt
-            if self.controller :
-                self.controller.stop_belt()
-
-    def stop_test(self):
-        if self.test_running:
-            self.test_running = False
-            if self.controller :
-                #stop_belt
-                self.controller.stop_belt()
-            if self.time_update_event:
-                self.time_update_event.cancel()
-                self.time_update_event = None
-
-    def update_test_time(self, dt):
-        if not self.test_running or len(self.test_points) == 0 :
-            return
-
-        self.elapsed_time = time.time() - self.test_start_time - self.pause_elapsed_time
-        t = self.elapsed_time
-
-        #stop test is the elapsed time is greater than maximum time
-        if t > max([p['time'] for p in self.test_points]):
-            self.stop_test()
-            self.ids.stop_button.state = 'down'
-            self.ids.start_button.state = 'normal'
-            return
-
-        #update treadmill speed and angle
-        controller = self.controller
-        if controller :
-            speed = self.get_speed(t)
-            angle = self.get_angle(t)
-            controller.set_belt_speed(speed)
-            controller.set_lift_angle(angle)
-            # Store the treadmill point
-            actual_speed = controller.get_belt_speed()
-            actual_angle = controller.get_lift_angle()
-            actual_v_speed = actual_speed * sin(radians(actual_angle)) * 1000  # Convert km/h to m/h
-            self.treadmill_points.append({
-                'time': t,
-                'speed': actual_speed,
-                'incl': actual_angle,
-                'asc': actual_v_speed
-            })
-
-        # Positionner le point sur le graphique
-        self.update_graph_dot(t, self._interpolate(t,self.graph_variable))
     
-    def update_graph_dot(self, time_value, y_value):
+    def update_graph_dot(self, treadmill_points):
         #show a vertical line at the current time on the graph
         if not self.current_dot:
             self.current_dot = MeshLinePlot(color=[1, 1, 0, 1])
             self.graph.add_plot(self.current_dot)
+        #get last time value from treadmill points if any
+        time_value = 0
+        if treadmill_points:
+            time_value = treadmill_points[-1]['time']
         self.current_dot.points =  [(time_value, 0), (time_value, 1e9)]
 
         # #Add a new trace with actual values
@@ -424,28 +398,50 @@ class IncrementalWidget(BoxLayout):
             self.actual_plot = MeshLinePlot(color=[0, 1, 1, 1])
             self.graph.add_plot(self.actual_plot)
         #update points
-        self.actual_plot.points = [(p['time'], p[self.graph_variable]) for p in self.treadmill_points]
+        self.actual_plot.points = [(p['time'], p[self.graph_variable]) for p in treadmill_points]
+        
 
     def get_speed(self, t):
         return self._interpolate(t,"speed")
 
     def get_angle(self, t):
         return self._interpolate(t,"incl")
+        
 
     def get_speed_asc(self, t):
         return self._interpolate(t,"asc")
-    
+
     def _interpolate(self, t, key):
         if not self.test_points:
             return 0
 
         times = np.array([p["time"] for p in self.test_points])
         values = np.array([p[key] for p in self.test_points])
-
+        
+        #check for boundaries
         if t <= times[0]:
             return values[0]
         elif t >= times[-1]:
             return values[-1]
+        
+        #find the last index of time where time < t
+        arg_t = np.searchsorted(times, t) - 1 #get the indice before
+        #determine if value at argt is a driven point
+        if self.points[arg_t][key].readonly :
+            #if driven point, interpolate values use for computation 
+            if key == "incl":
+                speed = self.get_speed(t)
+                asc = self.get_speed_asc(t)
+                return compute_tilt(speed, asc)
+            elif key == "speed":
+                angle = self.get_angle(t)
+                asc = self.get_speed_asc(t)
+                return compute_belt_speed(angle, asc)
+            elif key == "asc":
+                angle = self.get_angle(t)
+                speed = self.get_speed(t)
+                return compute_vertical_speed_mh(angle, speed)
+        #interpolate data
         else:
             return float(np.interp(t, times, values))
 
@@ -573,6 +569,6 @@ class IncrementalWidget(BoxLayout):
                     ev.get("asc", ""),
                 ])
     
-    #connect with revpi controller
-    def set_controller(self, controller):
-        self.controller = controller
+    #connect with treadmill
+    def set_treadmill(self, treadmill):
+        self.treadmill = treadmill

@@ -1,15 +1,17 @@
 
 from kivy.app import App
-from utils.treadmill_layout import TreadmillStackLayout
+from treadmill_layout import TreadmillLayout
 
 class TreadmillApp(App):
     def build(self):
-        widget = TreadmillStackLayout()
-        widget.security_top = False
-        widget.security_bottom = False
-        widget.security_left = False
-        widget.security_right = False
-        widget.emergency_stop = False
+        widget = TreadmillLayout()
+        widget.safeties = {
+            'top': False,
+            'bottom': False,
+            'left': False,
+            'right': False,
+            'emergency': False
+        }
         widget.mode_belt = True
         widget.font_size = 20
         #widget.update_canvas()

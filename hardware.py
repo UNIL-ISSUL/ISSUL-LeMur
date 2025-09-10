@@ -25,7 +25,7 @@ def read_yaml(file_path):
 
 #Read config dictionary in current folder
 file = Path(__file__)
-config = read_yaml(file.parent/'settings.yaml')
+config = read_yaml(file.parent/'hardware.yaml')
 
 #merge high and low byte of register
 def merge_registers(reg_hsb, reg_lsb) :
@@ -134,9 +134,9 @@ class revPI() :
     
     #return belt speed in km/h
     def get_belt_speed(self, steps = False) :
-        #read value on encoder
+        #read value on encoder in mm/s
         value = self.rpi.io.encoder_feedback_speed.value
-        return value * 3.6 / 1000
+        return value * 3.6 / 1000   #convert mm/s to km/h
 
     #return safety status on dict : front,back,right,left,emergency
     def get_safety_state(self) :

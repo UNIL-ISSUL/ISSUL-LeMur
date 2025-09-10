@@ -88,7 +88,25 @@
                 on_press: root.set_graph_variable('asc')
 
         BoxLayout:
-            id: graph_view
+            orientation: 'horizontal'
+            BoxLayout:
+                id: graph_view
+            BoxLayout:
+                size_hint_x: None
+                width: '50dp'
+                orientation: 'vertical'
+                Label:
+                    text: 'Zoom'
+                    size_hint_y: None
+                    height: '20dp'
+                Slider:
+                    id: zoom_slider
+                    orientation: 'vertical'
+                    min: 1
+                    max: 100
+                    value: root.zoom
+                    step: 5
+                    on_value: root.update_graph_zoom(self.value)
     #---- ESPACE DE SEPARATION ----#
     BoxLayout:
         size_hint_y: None
@@ -102,27 +120,11 @@
             size_hint_y: None
             height: "40dp"
             Button:
-                size_hint_x: 0.2
+                #size_hint_x: 0.2
                 width: "100dp"
                 text: "Go to 0"
                 id : init_button
                 on_release: root.goto_0()
-            ToggleButton:
-                text: "Start"
-                id : start_button
-                on_release: root.start_test()
-                group: "test_control"
-            ToggleButton:
-                text: "Pause"
-                id : pause_button
-                on_release: root.pause_test()
-                group: "test_control"
-            ToggleButton:
-                text: "Stop"
-                id : stop_button
-                on_release: root.stop_test()
-                group: "test_control"
-                state: "down"
    
         GridLayout:
             cols: 5

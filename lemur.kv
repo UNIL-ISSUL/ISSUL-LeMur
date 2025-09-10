@@ -23,17 +23,20 @@
         BoxLayout :
             orientation : 'vertical'
             ToggleButton :
+                allow_no_selection : False
                 disabled : root.hidden
                 text : str(root.increment_list[0])
                 group : root.name
                 on_press : root.set_increment(root.increment_list[0])
             ToggleButton : 
+                allow_no_selection : False
                 disabled : root.hidden
                 text : str(root.increment_list[1])
                 group : root.name
                 state : 'down'
                 on_press : root.set_increment(root.increment_list[1])
             ToggleButton :
+                allow_no_selection : False
                 disabled : root.hidden
                 text : str(root.increment_list[2])
                 group : root.name
@@ -55,6 +58,7 @@
                 disabled : automatic_button.state == 'down' or root.hidden
                 on_press : app.update_targets(root,True)
             ToggleButton :
+                allow_no_selection : False
                 disabled : root.hidden
                 id : automatic_button
                 state : 'down' if root.auto_update else 'normal'
@@ -106,49 +110,59 @@
     NumericDisplay :
         name : 'Inclinaison'
         unit : '°'
-        value : app.tilt_value
-        target : app.tilt_target
+        value : app.treadmill_status['lift_angle_PV']
+        target : app.treadmill_status['lift_angle_SP']
         has_target : True
         font_size : root.font_size
     NumericDisplay :
         name : 'Distance'
         unit : 'm'
-        value : app.elapsed_distance
+        value : app.treadmill_status['distance_m']
         font_size : root.font_size
     NumericDisplay :
         name : app.speed_text
         unit : 'km/h'
-        value : app.belt_speed_value
-        target : app.belt_speed_target
+        value : app.treadmill_status['belt_speed_PV']
+        target : app.treadmill_status['belt_speed_SP']
         has_target : True
         font_size : root.font_size
     NumericDisplay
         name : 'Dénivelé'
         unit : 'm'
-        value : app.elapsed_elevation
+        value : app.treadmill_status['elevation_m']
         font_size : root.font_size
     NumericDisplay :
         name : 'Vitesse verticale'
         unit : 'm/h'
-        value : app.vertical_speed_value
-        target : app.vertical_speed_target
+        value : app.treadmill_status['vertical_speed_PV']
+        target : app.treadmill_status['vertical_speed_SP']
         has_target : True
         font_size : root.font_size
     Label : 
-        text : 'Durée : ' + str(timedelta(seconds=app.elapsed_time)).split('.', 2)[0]
+        text : 'Durée : ' + str(timedelta(seconds=app.treadmill_status['elapsed_time'])).split('.', 2)[0]
+        font_size : root.font_size
+
+    ToggleButton :
+        allow_no_selection : False
+        id : start
+        text : 'Start'
+        group : 'controller'
+        on_press : app.start(self)
         font_size : root.font_size
     ToggleButton : 
+        allow_no_selection : False
+        id : pause
+        text : 'Pause'
+        group : 'controller'
+        on_press : app.pause(self)
+        font_size : root.font_size
+    ToggleButton : 
+        allow_no_selection : False
         id : stop
         text : 'Stop'
         state : 'down'
         group : 'controller'
-        on_press : app.stop()
-        font_size : root.font_size
-    ToggleButton :
-        id : start
-        text : 'Start'
-        group : 'controller'
-        on_press : app.start()
+        on_press : app.stop(self)
         font_size : root.font_size
 
 <Status@BoxLayout> :
@@ -170,60 +184,6 @@
         name : 'Arret urgence'
         active : app.safety_emergency
 
-<Ramp> :
-    id : ramp
-    orientation : 'vertical'
-    size_hint_y : 0.1
-    BoxLayout : 
-        orientation : 'horizontal'
-        Switch :
-            id : switch
-            size_hint_x : 0.1
-            active : root.state
-            on_active : root.toggle_state(switch.active)
-        Label :
-            text : "Mode Rampe"
-            font_size : 24
-    GridLayout : 
-        disabled : not switch.active
-        cols : 2
-        spacing : 10
-        NumericInputCompact :
-            id : start_speed
-            name : 'Vitesse initiale'
-            unit : 'km/h'
-            value : 12
-            on_value : root.compute_duration(0)
-        NumericInputCompact :
-            id : stop_speed
-            name : 'Vitesse finale'
-            unit : 'km/h'
-            value : 4
-            on_value : root.compute_duration(0)
-        NumericInputCompact :
-            id : step_speed
-            name : 'Incrément vitesse'
-            unit : 'km/h'
-            min : 0.1
-            max : 1
-            step : 0.1
-            value :0.1
-            on_value : root.compute_duration(0)
-        NumericInputCompact :
-            id : step_duration
-            name : 'Durée palier'
-            unit : 's'
-            value : 10
-            on_value : root.compute_duration(0)
-    
-        NumericDisplay :
-            name : "Durée"
-            unit : "min"
-            value : root.duration_min
-        
-        Button :
-            text : "Initialisation"
-            on_press : app.init_ramp(start_speed.value)
 #Manual Windows
 <ManualWidget@BoxLayout>:
 
@@ -242,15 +202,18 @@
         size_hint_y : 0.1
         spacing : 10
         ToggleButton :
+            allow_no_selection : False
             text : 'Aucun'
             group : 'vertical_speed'
             state : 'down'
             on_press : app.mode_changed(self)
         ToggleButton :
+            allow_no_selection : False
             text : 'Inclinaison'
             group : 'vertical_speed'
             on_press : app.mode_changed(self)
         ToggleButton :
+            allow_no_selection : False
             text : 'Vitesse tapis'
             group : 'vertical_speed'
             on_press : app.mode_changed(self)
@@ -263,7 +226,7 @@
         NumericInput :
             id : tilt
             target : app.tilt_target
-            value : app.tilt_value
+            value : app.treadmill_status['lift_angle_PV']
             on_target : app.update_targets(tilt)
             name : 'Inclinaison'
             unit : '°'
@@ -273,7 +236,7 @@
         
         NumericInput :
             id : belt_speed
-            value : app.belt_speed_value
+            value : app.treadmill_status['belt_speed_PV']
             target : app.belt_speed_target
             on_target : app.update_targets(belt_speed)
             name : app.speed_text
@@ -286,7 +249,7 @@
             id : vertical_speed
             hidden : True
             target : app.vertical_speed_target
-            value : app.vertical_speed_value
+            value : app.treadmill_status['vertical_speed_PV']
             on_target : app.update_targets(vertical_speed)
             name : 'Vitesse verticale'
             unit : 'm/h'
@@ -314,11 +277,13 @@
             orientation : 'horizontal'
             spacing : 10
             ToggleButton :
+                allow_no_selection : False
                 text : 'Bande'
                 group : 'steps'
                 state : 'down'
                 on_press : app.toggle_steps(False)
             ToggleButton :
+                allow_no_selection : False
                 text : 'Marches'
                 group : 'steps'
                 on_press : app.toggle_steps(True)
@@ -352,12 +317,14 @@ BoxLayout :
             height: "40dp"
 
             ToggleButton:
+                allow_no_selection : False
                 text: "Contrôle manuel"
                 group: "tabs"
                 state: "down"
                 on_release: screen_manager.current = "manual_tab"
 
             ToggleButton:
+                allow_no_selection : False
                 text: "Test incrémental"
                 group: "tabs"
                 on_release: screen_manager.current = "incremental_tab"
@@ -380,16 +347,12 @@ BoxLayout :
     #pSection de droite  
     BoxLayout:
         orientation : 'vertical'
-        size_hint_x : 0.3
+        size_hint_x : 0.35
 
         TreadmillLayout:
             id: treadmill
             font_size: 24
-            security_top : app.safeties['front']
-            security_bottom : app.safeties['back']
-            security_left : app.safeties['left']
-            security_right : app.safeties['right']
-            emergency_stop : app.safeties['emergency']
+            safeties : app.treadmill_status['safeties']
             mode_belt : app.steps_active
 
         Controller :
