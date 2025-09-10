@@ -249,7 +249,8 @@ class LeMurApp(App):
         #configure incremental widget
         if self.screen_manager.current == 'incremental_tab' :
             #reset event if any
-            self.incremental_widget.delete_event()
+            if not self.treadmill.is_paused() :
+                self.incremental_widget.delete_event()
         #start treadmill
         if instance.state == 'down' :
             self.treadmill.start()

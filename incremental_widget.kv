@@ -127,7 +127,7 @@
                 on_release: root.goto_0()
    
         GridLayout:
-            cols: 5
+            cols: 4
             size_hint_y: None
             height: self.minimum_height
             row_default_height: "30dp"
@@ -142,8 +142,8 @@
                 text: "Inclinaison [°]"
             Label: 
                 text: "Vitesse Asc. [m/h]"
-            Label: 
-                text: ""
+            # Label: 
+            #     text: ""
 
         BoxLayout:         # conteneur pour ScrollView
             orientation: 'vertical'
@@ -155,7 +155,7 @@
                 size_hint_y: 1
                 GridLayout:
                     id: events_grid
-                    cols: 5
+                    cols: 4
                     size_hint_y: None
                     height: self.minimum_height
                     row_default_height: "30dp"
@@ -167,8 +167,8 @@
                 text: "Ajouter un événement"
                 on_release: root.add_event()
             
-            Button:
-                size_hint_x: 0.3
-                text: "Export events"
-                on_release: root.export_events_as_csv()
+            # Button:
+            #     size_hint_x: 0.3
+            #     text: "Export events"
+            #     on_release: root.export_events_as_csv()
         

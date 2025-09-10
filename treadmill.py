@@ -69,7 +69,7 @@ class TreadmillController:
         # Event and log features
         self.event_list = []
         self.event_file = None
-        self.last_event_str = ''
+        self.log_event = False
         self.log_file = None
         self.log_writer = None
         self.log_folder = os.path.join(os.path.dirname(__file__), 'log')
@@ -79,11 +79,14 @@ class TreadmillController:
 
     def record_event(self, event_name=None):
         """Record an event with the current elapsed time and optional name."""
-        event = {'time': self.elapsed_time, 'event': event_name or ''}
+        event = {'time': self.elapsed_time, 'event': event_name, 'lift_angle_PV': self.lift_angle_PV, 'belt_speed_PV': self.belt_speed_PV, 'vertical_speed_PV': self.vertical_speed_PV}
+        # Append to in-memory list
         self.event_list.append(event)
+        #toggle log event
+        self.log_event = True
         # Write to event file if open
         if self.event_file:
-            writer = csv.DictWriter(self.event_file, fieldnames=['time', 'event'])
+            writer = csv.DictWriter(self.event_file, fieldnames=['time','lift_angle_PV','belt_speed_PV','vertical_speed_PV','event'])
             writer.writerow(event)
             self.event_file.flush()
 
@@ -91,7 +94,7 @@ class TreadmillController:
         now = datetime.now().strftime('%Y-%m-%d-%H%M%S')
         event_path = os.path.join(self.event_folder, f'{now}-events.csv')
         self.event_file = open(event_path, 'w', newline='')
-        writer = csv.DictWriter(self.event_file, fieldnames=['time', 'event'])
+        writer = csv.DictWriter(self.event_file, fieldnames=['time','lift_angle_PV','belt_speed_PV','vertical_speed_PV','event'])
         writer.writeheader()
         self.event_file.flush()
 
@@ -172,12 +175,13 @@ class TreadmillController:
             
             # Log to file if running
             if self.log_writer:
-                # Write the latest event if any, else blank
-                event_str = self.event_list[-1]['event'] if self.event_list else ''
-                if event_str != self.last_event_str:
-                    self.last_event_str = event_str
-                else :
+                #add event string only if there was an event
+                if self.log_event:
+                    event_str = self.event_list[-1]['event'] if self.event_list else ''
+                    self.log_event = False
+                else:
                     event_str = ''
+                
                 self.log_writer.writerow({
                     'time': self.elapsed_time,
                     'belt_speed_SP': self.belt_speed_SP,
@@ -226,7 +230,8 @@ class TreadmillController:
             if self.hardware:
                 self.hardware.start_belt()
             Logger.info(f"Treadmill: Resumed at {time()}")
-
+            #Write resume event
+            self.record_event('resume')
 
     def pause(self):
         if self.running:
@@ -261,19 +266,13 @@ class TreadmillController:
     #All get functions return the current setpoint or process variable if there is no treadmill attached
     #Caution to self.update() before calling getter
     def get_lift_angle(self):
-        if self.hardware:
-            return self.lift_angle_PV
-        return self.lift_angle_SP
+        return self.lift_angle_PV
 
     def get_belt_speed(self):
-        if self.hardware:
-            return self.belt_speed_PV
-        return self.belt_speed_SP
+        return self.belt_speed_PV
     
     def get_vertical_speed(self):
-        if self.hardware:
-            return self.vertical_speed_PV
-        return compute_vertical_speed_mh(self.lift_angle_SP,self.belt_speed_SP)
+        return self.vertical_speed_PV
 
     def get_safeties(self):
         if self.hardware:
@@ -296,6 +295,8 @@ class TreadmillController:
     
     def is_running(self):
         return self.running and not self.paused
+    def is_paused(self):
+        return self.paused
     
     #shutdown function
     def shutdown(self):

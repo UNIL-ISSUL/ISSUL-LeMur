@@ -314,14 +314,15 @@ class IncrementalWidget(BoxLayout):
             grid.add_widget(Label(text="{:.2f}".format(event["speed"])))
             grid.add_widget(Label(text="{:.2f}".format(event["angle"])))
             grid.add_widget(Label(text="{:.2f}".format(event["asc"])))
-            grid.add_widget(Button(text="Supprimer", on_release=lambda btn, ev=event: self.delete_event(ev)))
+            #grid.add_widget(Button(text="Supprimer", on_release=lambda btn, ev=event: self.delete_event(ev)))
     
     def add_event(self):
+        self.treadmill.record_event("incremental test event")
         #add a new event at the current time
         current_time = self.elapsed_time  # ou variable que tu utilises
-        speed = self.get_speed(current_time)
-        angle = self.get_angle(current_time)
-        asc = self.get_speed_asc(current_time)
+        speed = self.treadmill.get_belt_speed() if self.treadmill else 0
+        angle = self.treadmill.get_lift_angle() if self.treadmill else 0
+        asc = self.treadmill.get_vertical_speed() if self.treadmill else 0
 
         new_event = {"time": current_time, "speed": speed, "angle": angle, "asc": asc}
         self.events.append(new_event)
@@ -330,7 +331,7 @@ class IncrementalWidget(BoxLayout):
 
     def draw_event_line(self, time_s):
         line = MeshLinePlot(color=[1, 0, 0, 1])
-        line.points = [(time_s, 0), (time_s, 1e9)]
+        line.points = [(time_s, -1e9), (time_s, 1e9)]
         self.graph.add_plot(line)
     
     def delete_event(self, event=None):
@@ -391,7 +392,7 @@ class IncrementalWidget(BoxLayout):
         time_value = 0
         if treadmill_points:
             time_value = treadmill_points[-1]['time']
-        self.current_dot.points =  [(time_value, 0), (time_value, 1e9)]
+        self.current_dot.points =  [(time_value, -1e9), (time_value, 1e9)]
 
         # #Add a new trace with actual values
         if not self.actual_plot :
