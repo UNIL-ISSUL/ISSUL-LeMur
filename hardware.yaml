@@ -1,7 +1,7 @@
 #CONFIGURATION FILE TO CONFIGURE LE_MUR
 
 #REVOLUTION PI 
-CYCLETIME_MS : 50       #cycle time in ms
+CYCLETIME_MS : 100       #cycle time in ms
 
 #MECAHNICAL CHARATERISTICS
 BELT_LENGTH_MM : 2620   # distance between wheel and pivot
