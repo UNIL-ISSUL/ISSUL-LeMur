@@ -139,13 +139,13 @@ class revPI() :
         return value * 3.6 / 1000   #convert mm/s to km/h
 
     #return safety status on dict : front,back,right,left,emergency
-    def get_safety_state(self) :
+    def get_safeties(self) :
         return {
-            "right": self.revpi.rpi.io.secu_right.value,
-            "left": self.revpi.rpi.io.secu_left.value,
-            "front": self.revpi.rpi.io.secu_front.value,
-            "back": self.revpi.rpi.io.secu_back.value,
-            "emergency": self.revpi.rpi.io.secu_emergency.value
+            "right": self.rpi.io.secu_right.value,
+            "left": self.rpi.io.secu_left.value,
+            "front": self.rpi.io.secu_front.value,
+            "back": self.rpi.io.secu_back.value,
+            "emergency": self.rpi.io.secu_emergency.value
         }
     
     #Set steps status
