@@ -60,16 +60,16 @@ class revPI() :
         self.enable_pid(0,True)      
 
         #set event to create latch function on belt-start and belt_stop
-        self.rpi.io.belt_start.reg_timerevent(self.latch_output, 10,edge=revpimodio2.RISING,as_thread=False)    #start is trigger to 0 after 10ms
-        self.rpi.io.belt_stop.reg_timerevent(self.latch_output, 10,edge=revpimodio2.FALLING,as_thread=False)    #stop is trigger to 1 after 10ms
+        self.rpi.io.belt_start.reg_event(self.latch_output, edge=revpimodio2.RISING,as_thread=True)    #start is trigger to 0 after 10ms
+        self.rpi.io.belt_stop.reg_event(self.latch_output, edge=revpimodio2.FALLING,as_thread=True)    #stop is trigger to 1 after 10ms
         #set event to handle safety input
         self.rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
         #close the program properly
         self.rpi.handlesignalend(cleanupfunc=self.stop_all)
 
     #no longer used
-    # def mainloop(self) :
-    #     self.rpi.mainloop(blocking=False)
+    def mainloop(self) :
+        self.rpi.mainloop(blocking=False)
     
     #stop lift and belt
     def stop_all(self) :
@@ -111,16 +111,16 @@ class revPI() :
     #start belt and display a msg from user
     def start_belt(self,msg=None) :
         run = True
-        self.rpi.io.belt_start.value = run
-        self.rpi.io.belt_stop.value = not run
+        self.rpi.io.belt_start.value = 1
+        #self.rpi.io.belt_stop.value = not run
         #display status, if there is no msg do not display reason
         Logger.info(f"Belt started{f', reason : {msg}' if msg else ''}")
 
     #stop belt and display a msg from user
     def stop_belt(self,msg=None) :
         stop = True
-        self.rpi.io.belt_stop.value = stop
-        self.rpi.io.belt_start.value = not stop
+        self.rpi.io.belt_stop.value = 0
+        #self.rpi.io.belt_start.value = not stop
         Logger.info(f"Belt stopped{f', reason : {msg}' if msg else ''}")
         
     #set belt speed to controller via modbus
