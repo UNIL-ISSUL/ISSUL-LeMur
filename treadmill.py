@@ -38,6 +38,10 @@ def add_noise(value, noise_level=0.01):
 import os
 import csv
 from datetime import datetime
+import queue
+import threading
+from time import sleep
+import collections
 
 class TreadmillController:
     # variables
@@ -53,12 +57,7 @@ class TreadmillController:
         "right": True,
         "emergency": True
     }
-    treadmill_points = {
-        'time': 0,
-        'speed': 0,
-        'incl': 0,
-        'asc': 0
-    }
+    treadmill_points = None
 
     running = False
     paused = False
@@ -76,6 +75,29 @@ class TreadmillController:
         self.event_folder = os.path.join(os.path.dirname(__file__), 'events')
         os.makedirs(self.log_folder, exist_ok=True)
         os.makedirs(self.event_folder, exist_ok=True)
+        # Thread-safe queue for logging
+        self.log_queue = queue.Queue()
+        self.log_thread = None
+        self.stop_logging_thread = threading.Event()
+
+    def _log_worker(self):
+        """Worker thread for writing logs to file."""
+        Logger.info("Treadmill: Log worker thread started.")
+        while not self.stop_logging_thread.is_set():
+            try:
+                # Wait for a log entry, with a timeout to allow checking the stop signal
+                log_data = self.log_queue.get(timeout=0.1)
+                if log_data is None:  # Sentinel value to stop
+                    break
+                if self.log_writer:
+                    self.log_writer.writerow(log_data)
+                    # Flush occasionally, not on every write
+                    if self.log_queue.qsize() == 0:
+                        self.log_file.flush()
+                self.log_queue.task_done()
+            except queue.Empty:
+                continue
+        Logger.info("Treadmill: Log worker thread stopped.")
 
     def record_event(self, event_name=None):
         """Record an event with the current elapsed time and optional name."""
@@ -111,9 +133,19 @@ class TreadmillController:
             'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_m', 'event'
         ])
         self.log_writer.writeheader()
-        self.log_file.flush()
+        # Start the logging thread
+        self.stop_logging_thread.clear()
+        self.log_thread = threading.Thread(target=self._log_worker, daemon=True)
+        self.log_thread.start()
 
     def _close_log_file(self):
+        if self.log_thread and self.log_thread.is_alive():
+            # Signal the thread to stop and wait for it to process the queue
+            self.log_queue.put(None)
+            self.log_thread.join(timeout=2) # Wait for max 2 seconds
+            self.stop_logging_thread.set()
+
+
         if self.log_file:
             self.log_file.close()
             self.log_file = None
@@ -127,8 +159,9 @@ class TreadmillController:
         self.pause_time = 0
         self.elapsed_pause_time = 0
         self.last_update_time = 0
-        self.treadmill_points = []
+        self.treadmill_points = collections.deque(maxlen=2000)
         self.event_list = []
+        self.update_counter = 0
 
     def update(self):
         #update PV
@@ -152,13 +185,17 @@ class TreadmillController:
                 self.belt_speed_PV = 0
         #compute vertical speed
         self.vertical_speed_PV = compute_vertical_speed_mh(self.lift_angle_PV,self.belt_speed_PV)
-        #store treadmill points
-        self.treadmill_points.append({
-            'time': self.elapsed_time,
-            'speed': self.belt_speed_PV,
-            'incl': self.lift_angle_PV,
-            'asc': self.vertical_speed_PV
-        })
+
+        # Downsample data for the live graph (1Hz)
+        self.update_counter += 1
+        if self.update_counter % 10 == 0:
+            #store treadmill points
+            self.treadmill_points.append({
+                'time': self.elapsed_time,
+                'speed': self.belt_speed_PV,
+                'incl': self.lift_angle_PV,
+                'asc': self.vertical_speed_PV
+            })
 
 
         #update running value
@@ -173,8 +210,8 @@ class TreadmillController:
                 self.elevation_m += (self.vertical_speed_PV / 3600) * delta_time
             self.last_update_time = current_time
             
-            # Log to file if running
-            if self.log_writer:
+            # Log to file if running by putting data in the queue
+            if self.log_thread and self.log_thread.is_alive():
                 #add event string only if there was an event
                 if self.log_event:
                     event_str = self.event_list[-1]['event'] if self.event_list else ''
@@ -182,7 +219,7 @@ class TreadmillController:
                 else:
                     event_str = ''
                 
-                self.log_writer.writerow({
+                log_data = {
                     'time': self.elapsed_time,
                     'belt_speed_SP': self.belt_speed_SP,
                     'belt_speed_PV': self.belt_speed_PV,
@@ -193,8 +230,8 @@ class TreadmillController:
                     'distance_m': self.distance_m,
                     'elevation_m': self.elevation_m,
                     'event': event_str
-                })
-                self.log_file.flush()
+                }
+                self.log_queue.put(log_data)
             
         #return a dict with all relevant data
         return {
