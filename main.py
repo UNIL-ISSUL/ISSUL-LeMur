@@ -378,7 +378,7 @@ class LeMurApp(App):
 if __name__ == '__main__':
     if hardware.is_raspberry_pi() : 
         revpi = hardware.revPI()
-        #lemur.mainloop()
+        revpi.mainloop()
         Logger.info("Main.py : Execute on a revpi")
     else :
         Logger.info("Main.py : Execute on a PC")
