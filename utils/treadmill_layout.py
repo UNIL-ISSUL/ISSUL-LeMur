@@ -52,6 +52,7 @@ class TreadmillLayout(StackLayout):
         self.center_widget = ToggleButton(size_hint=(0.7,0.7),
                                           text='ESCALIER' if self.mode_belt else 'BANDE',
                                           font_size=self.font_size,
+                                          halign='center',
                                           state='down',
                                           on_press=self._update)
         self.right_widget = SecurityToggleButton(size_hint=(0.15,0.7),
