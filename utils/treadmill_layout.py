@@ -9,6 +9,7 @@ def make_vertical_text(text):
         return ""
     return '\n'.join(text)
 
+
 def bool2state(value):
     """Convertit un booléen en état de bouton ('down' ou 'normal')"""
     return 'down' if value else 'normal'
@@ -31,7 +32,7 @@ class TreadmillLayout(StackLayout):
         self.emergency_stop_widget = []
         for i  in range(4) :
             self.emergency_stop_widget.append(SecurityToggleButton(size_hint=(0.15,0.15),
-                                                           text=make_vertical_text('STOP'),
+                                                           text='STOP',
                                                            font_size=self.font_size,
                                                            state='down',
                                                            on_press=self._update))

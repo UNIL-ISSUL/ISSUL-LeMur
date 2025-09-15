@@ -1,16 +1,22 @@
 <NumericInput> :
     orientation : 'vertical'
-    Label :
-        text :root.name + " : " + "{:.2f}".format(root.value) + " / " + "{:.2f}".format(root.target) + " " + root.unit
-        font_size : 25
-        disabled : root.hidden
-    Slider : 
-        disabled : root.hidden
-        min : root.min_value
-        step : root.increment_list[1]
-        max : root.max_value
-        value : root.target
-        on_value : root.slider_change(self.value)
+    BoxLayout :
+        orientation : 'horizontal'
+        height : '60dp'
+        size_hint_y : None
+        Label :
+            text :root.name + " : " + "{:.2f}".format(root.value) + " / " + "{:.2f}".format(root.target) + " " + root.unit
+            font_size : 25
+            disabled : root.hidden
+            size_hint_x: 0.33
+        Slider : 
+            disabled : root.hidden
+            min : root.min_value
+            step : root.increment_list[1]
+            max : root.max_value
+            value : root.target
+            on_value : root.slider_change(self.value)
+            size_hint_x: 0.67
     # TextInput :
     #     multiline : False
     #     size_hint_y : None
@@ -188,19 +194,19 @@
 <ManualWidget@BoxLayout>:
 
     orientation : 'vertical'
-    padding : 10
-    spacing : 10
+    padding : [0,10,0,0]
+    spacing : 40
     id : main
-
-    Label :
-        text : 'Controle de la vitesse verticale :'
-        size_hint_y : 0.1
-        font_size : 24
 
     BoxLayout :
         orientation : 'horizontal'
-        size_hint_y : 0.1
+        height : '40dp'
+        size_hint_y : None
         spacing : 10
+        Label :
+            text : 'Paramètre piloté :'
+            height : '40dp'
+            font_size : 24
         ToggleButton :
             allow_no_selection : False
             text : 'Aucun'
@@ -218,75 +224,69 @@
             group : 'vertical_speed'
             on_press : app.mode_changed(self)
 
-    GridLayout :
-        cols : 1
-        spacing : 10
-        padding : 0
+    NumericInput :
+        id : tilt
+        target : app.tilt_target
+        value : app.treadmill_status['lift_angle_PV']
+        on_target : app.update_targets(tilt)
+        name : 'Inclinaison'
+        unit : '°'
+        min_value : 1   #limité par le l'axe des poulies des courroies
+        max_value : 40  #limité par le l'axe des poulies des courroies
+        auto_update : False
+    
+    NumericInput :
+        id : belt_speed
+        value : app.treadmill_status['belt_speed_PV']
+        target : app.belt_speed_target
+        on_target : app.update_targets(belt_speed)
+        name : app.speed_text
+        unit : 'km/h'
+        min_value : 0
+        max_value : 15
+        auto_update : True
 
-        NumericInput :
-            id : tilt
-            target : app.tilt_target
-            value : app.treadmill_status['lift_angle_PV']
-            on_target : app.update_targets(tilt)
-            name : 'Inclinaison'
-            unit : '°'
-            min_value : 1   #limité par le l'axe des poulies des courroies
-            max_value : 40  #limité par le l'axe des poulies des courroies
-            auto_update : False
-        
-        NumericInput :
-            id : belt_speed
-            value : app.treadmill_status['belt_speed_PV']
-            target : app.belt_speed_target
-            on_target : app.update_targets(belt_speed)
-            name : app.speed_text
-            unit : 'km/h'
-            min_value : 0
-            max_value : 15
-            auto_update : True
-
-        NumericInput :
-            id : vertical_speed
-            hidden : True
-            target : app.vertical_speed_target
-            value : app.treadmill_status['vertical_speed_PV']
-            on_target : app.update_targets(vertical_speed)
-            name : 'Vitesse verticale'
-            unit : 'm/h'
-            min_value : 100
-            max_value : 3500
-            auto_update : True
-            increment_list : [10, 50, 100]
+    NumericInput :
+        id : vertical_speed
+        hidden : True
+        target : app.vertical_speed_target
+        value : app.treadmill_status['vertical_speed_PV']
+        on_target : app.update_targets(vertical_speed)
+        name : 'Vitesse verticale'
+        unit : 'm/h'
+        min_value : 100
+        max_value : 3500
+        auto_update : True
+        increment_list : [10, 50, 100]
 
     BoxLayout : 
-        orientation : 'vertical'
+        orientation : 'horizontal'
         canvas.before:
             Color:
                 rgba: (204/255, 82/255, 0/255,1) if app.steps_active else (0, 0, 0, 1)
             Rectangle:
                 pos: self.pos
                 size: self.size
-        
-        size_hint_y : 0.3
-        padding : [0,0,0,20]
+
+        height : '60dp' 
+        size_hint_y : None
+        spacing : 10
+        padding : [0,10]
 
         Label :
             text : 'Surface de marche'
             font_size : 24
-        BoxLayout :
-            orientation : 'horizontal'
-            spacing : 10
-            ToggleButton :
-                allow_no_selection : False
-                text : 'Bande'
-                group : 'steps'
-                state : 'down'
-                on_press : app.toggle_steps(False)
-            ToggleButton :
-                allow_no_selection : False
-                text : 'Marches'
-                group : 'steps'
-                on_press : app.toggle_steps(True)
+        ToggleButton :
+            allow_no_selection : False
+            text : 'Bande'
+            group : 'steps'
+            state : 'down'
+            on_press : app.toggle_steps(False)
+        ToggleButton :
+            allow_no_selection : False
+            text : 'Marches'
+            group : 'steps'
+            on_press : app.toggle_steps(True)
 
 <MainScreenManager>:
     id: screen_manager
@@ -301,6 +301,19 @@
         IncrementalWidget:
             id: incr_widget
 
+# Séparateur visuel
+<Separator@Widget>:
+    orientation : 'vertical'
+    size_hint_x: None if root.orientation == 'vertical' else 1
+    size_hint_y: 1 if root.orientation == 'vertical' else None
+    width: 5 if root.orientation == 'vertical' else self.width
+    height: self.height if root.orientation == 'vertical' else 5
+    canvas:
+        Color:
+            rgba: 0.7, 0.7, 0.7, 1  # couleur grise
+        Rectangle:
+            pos: self.pos
+            size: self.size
  
 
 BoxLayout :
@@ -311,6 +324,7 @@ BoxLayout :
     #Section principale
     BoxLayout
         orientation: "vertical"
+        spacing : 10
         # --- Barre d'onglets ---
         BoxLayout:
             size_hint_y: None
@@ -328,33 +342,29 @@ BoxLayout :
                 text: "Test incrémental"
                 group: "tabs"
                 on_release: screen_manager.current = "incremental_tab"
+        # --
+        Separator:
+            orientation: 'horizontal'
 
         # --- Contenu des onglets ---
         MainScreenManager:
             id: screen_manager
 
     # Séparateur visuel
-    Widget:
-        size_hint_x: None
-        width: 5
-        canvas:
-            Color:
-                rgba: 0.7, 0.7, 0.7, 1  # couleur grise
-            Rectangle:
-                pos: self.pos
-                size: self.size
+    Separator:
+        orientation: 'vertical'
 
-    #pSection de droite  
+    # Section de droite
     BoxLayout:
         orientation : 'vertical'
         size_hint_x : 0.35
 
         TreadmillLayout:
             id: treadmill
-            font_size: 24
+            font_size: 18
             safeties : app.treadmill_status['safeties']
             mode_belt : app.steps_active
 
         Controller :
             id : controller
-            font_size : 50
+            font_size : 22

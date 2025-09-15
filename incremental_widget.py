@@ -7,7 +7,7 @@ from kivy.uix.filechooser import FileChooserListView
 from kivy.uix.popup import Popup
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty, ListProperty
 from kivy.clock import Clock
 from kivy.lang import Builder
 from math import radians, sin, degrees, asin, floor, ceil, log10
@@ -91,6 +91,7 @@ def compute_axis_range(values, padding_ratio=0.05, max_minor=5):
 class IncrementalWidget(BoxLayout):
 
     zoom = NumericProperty(1)
+    test_points = ListProperty([])
 
     def __init__(self, **kwargs):
         Builder.load_file("incremental_widget.kv")
@@ -105,7 +106,7 @@ class IncrementalWidget(BoxLayout):
     ### table section ***************************
     def _delayed_init(self, *args):
         self.points = []
-        self.test_points = []
+        #self.test_points = []
         self.elapsed_time = 0
         self.add_point()
 

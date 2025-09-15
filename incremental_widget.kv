@@ -5,10 +5,27 @@
     BoxLayout:
         orientation: 'vertical'
         size_hint_y: 0.3
+
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: '40dp'
+                        
+            Button:
+                text: 'Ajouter un point'
+                on_press: root.add_point()
+            
+            Button:
+                text: "Charger profil"
+                on_release: root.load_profile()
+            Button:
+                text: "Sauvegarder profil"
+                on_release: root.save_profile()
+
         GridLayout:
             cols : 5
             size_hint_y: None
-            height: 30
+            height: "30dp"
             row_default_height: 30
             row_force_default: True
             padding: [0, 4]
@@ -25,6 +42,7 @@
                 text: ''
                 size_hint_x: None
                 width: 100
+
         BoxLayout:         # conteneur pour ScrollView
             orientation: 'vertical'
             size_hint_y: 1   # prend tout l'espace restant dans la zone 0.3
@@ -40,26 +58,11 @@
                     cols: 5
                     size_hint_y: None
                     height: self.minimum_height
-                    row_default_height: 40
+                    row_default_height: "30dp"
                     row_force_default: True
                     padding: [0, 4]
                     spacing: [4, 4]
 
-        BoxLayout :
-            size_hint_y: None
-            height: 50
-            orientation: 'horizontal'
-                        
-            Button:
-                text: 'Ajouter un point'
-                on_press: root.add_point()
-            
-            Button:
-                text: "Charger profil"
-                on_release: root.load_profile()
-            Button:
-                text: "Sauvegarder profil"
-                on_release: root.save_profile()
     #---- ESPACE DE SEPARATION ----#
     BoxLayout:
         size_hint_y: None
@@ -73,18 +76,25 @@
         BoxLayout:
             size_hint_y: None
             height: '40dp'
+            Label:
+                text: 'Abscisse:'
+                size_hint_x: None
+                width: '100dp'
             ToggleButton:
                 text: 'Inclinaison'
                 group: 'graph_axis'
                 state: 'down'
+                allow_no_selection: False
                 on_press: root.set_graph_variable('incl')
             ToggleButton:
                 text: 'Vitesse'
                 group: 'graph_axis'
+                allow_no_selection: False
                 on_press: root.set_graph_variable('speed')
             ToggleButton:
                 text: 'Vitesse Asc.'
                 group: 'graph_axis'
+                allow_no_selection: False
                 on_press: root.set_graph_variable('asc')
 
         BoxLayout:
@@ -120,11 +130,8 @@
             size_hint_y: None
             height: "40dp"
             Button:
-                #size_hint_x: 0.2
-                width: "100dp"
-                text: "Go to 0"
-                id : init_button
-                on_release: root.goto_0()
+                text: "Ajouter un événement"
+                on_release: root.add_event()
    
         GridLayout:
             cols: 4
@@ -160,15 +167,17 @@
                     height: self.minimum_height
                     row_default_height: "30dp"
                     row_force_default: True
+        
         BoxLayout:
             size_hint_y: None
             height: "40dp"
             Button:
-                text: "Ajouter un événement"
-                on_release: root.add_event()
-            
-            # Button:
-            #     size_hint_x: 0.3
-            #     text: "Export events"
-            #     on_release: root.export_events_as_csv()
+                #size_hint_x: 0.2
+                width: "100dp"
+                angle: root.test_points[0]['incl'] if root.test_points else "n/a"
+                text: "Régler l'inclinaison à "+str(self.angle)+"°"
+                id : init_button
+                on_release: root.goto_0()
+
+
         
