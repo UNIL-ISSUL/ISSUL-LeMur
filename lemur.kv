@@ -170,6 +170,10 @@
         group : 'controller'
         on_press : app.stop(self)
         font_size : root.font_size
+    Button :
+        text : 'Reverse'
+        on_press : app.show_reverse_popup()
+        font_size : root.font_size
 
 <Status@BoxLayout> :
     orientation : 'horizontal'

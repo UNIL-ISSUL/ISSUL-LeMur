@@ -263,6 +263,11 @@ class TreadmillController:
         if self.hardware:   self.hardware.set_belt_speed(speed)
         Logger.info(f"Treadmill: Set belt speed to {speed}")
 
+    def reverse_belt(self, direction):
+        if self.hardware:
+            self.hardware.set_belt_direction(direction)
+        Logger.info(f"Treadmill: Set belt direction to {'forward' if direction else 'backward'}")
+
     #All get functions return the current setpoint or process variable if there is no treadmill attached
     #Caution to self.update() before calling getter
     def get_lift_angle(self):

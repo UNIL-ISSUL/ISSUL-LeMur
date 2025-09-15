@@ -132,6 +132,11 @@ class revPI() :
         #split and apply value
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
         Logger.info("Belt frequency updated : " + str(value/100))
+
+    #set belt direction
+    def set_belt_direction(self,direction):
+        self.rpi.io.belt_dir.value = direction
+        Logger.info(f"SET belt direction to : {'forward' if direction else 'backward'}")
     
     #return belt speed in km/h
     def get_belt_speed(self, steps = False) :
