@@ -50,6 +50,7 @@ class TreadmillController:
     belt_speed_SP = 0
     belt_speed_PV = 0
     vertical_speed_PV = 0
+    belt_direction = True
     safeties = {
         "top": True,
         "bottom": True,
@@ -169,6 +170,7 @@ class TreadmillController:
             self.lift_angle_PV = self.hardware.get_lift_angle()
             self.belt_speed_PV = self.hardware.get_belt_speed()
             self.safeties = self.hardware.get_safeties()
+            self.belt_direction = self.hardware.get_belt_direction()
 
         #When there is no hardware : PV set to setpoint and 1% of random noise
         else:
@@ -244,7 +246,8 @@ class TreadmillController:
             "safeties": self.safeties,
             "distance_m": self.distance_m,
             "elevation_m": self.elevation_m,
-            "elapsed_time": self.elapsed_time
+            "elapsed_time": self.elapsed_time,
+            "belt_direction": self.belt_direction
         }
 
     def start(self):
@@ -300,8 +303,17 @@ class TreadmillController:
         if self.hardware:   self.hardware.set_belt_speed(speed)
         Logger.info(f"Treadmill: Set belt speed to {speed}")
 
+    def reverse_belt(self, direction):
+        self.belt_direction = direction
+        if self.hardware:
+            self.hardware.set_belt_direction(direction)
+        Logger.info(f"Treadmill: Set belt direction to {'forward' if direction else 'backward'}")
+
     #All get functions return the current setpoint or process variable if there is no treadmill attached
     #Caution to self.update() before calling getter
+    def get_belt_direction(self):
+        return self.belt_direction
+
     def get_lift_angle(self):
         return self.lift_angle_PV
 

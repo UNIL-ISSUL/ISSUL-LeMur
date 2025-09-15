@@ -265,6 +265,31 @@ class LeMurApp(App):
         if instance.state == 'down' :
             self.treadmill.stop()
 
+    def show_reverse_popup(self):
+        content = BoxLayout(orientation='vertical', spacing=10)
+        popup_label = Label(text='Choose direction')
+        forward_button = Button(text='Forward (UP)')
+        backward_button = Button(text='Backward (DOWN)')
+        content.add_widget(popup_label)
+        content.add_widget(forward_button)
+        content.add_widget(backward_button)
+
+        popup = Popup(title='Treadmill Direction',
+                      content=content,
+                      size_hint=(None, None), size=(400, 200))
+
+        def set_reverse_and_dismiss(direction):
+            self.set_reverse(direction)
+            popup.dismiss()
+
+        forward_button.bind(on_press=lambda *args: set_reverse_and_dismiss(True))
+        backward_button.bind(on_press=lambda *args: set_reverse_and_dismiss(False))
+
+        popup.open()
+
+    def set_reverse(self, direction):
+        self.treadmill.reverse_belt(direction)
+
     def update_targets(self,instance,manual=False) :
         if self.vertical_speed_mode == 0 :  #vertical speed in manual mode
             #update tilt

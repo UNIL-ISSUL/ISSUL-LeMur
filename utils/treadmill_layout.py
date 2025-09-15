@@ -18,6 +18,7 @@ class TreadmillLayout(StackLayout):
      # Variables de configuration
     safeties = ObjectProperty({})
     mode_belt = BooleanProperty(False)  # True pour "belt", False pour "step"
+    belt_direction = BooleanProperty(True) # True pour "forward", False pour "backward"
     font_size = NumericProperty(5)
     
     def __init__(self, **kwargs):
@@ -26,6 +27,7 @@ class TreadmillLayout(StackLayout):
         self.bind(
             safeties=self._update,
             mode_belt=self._update,
+            belt_direction=self._update,
             font_size=self._update_font_size
         )
         #define widgets
@@ -50,6 +52,7 @@ class TreadmillLayout(StackLayout):
         self.center_widget = ToggleButton(size_hint=(0.7,0.7),
                                           text='ESCALIER' if self.mode_belt else 'BANDE',
                                           font_size=self.font_size,
+                                          halign='center',
                                           state='down',
                                           on_press=self._update)
         self.right_widget = SecurityToggleButton(size_hint=(0.15,0.7),
@@ -80,7 +83,9 @@ class TreadmillLayout(StackLayout):
         self.top_widget.state = bool2state(self.safeties.get('top', True))
         self.left_widget.state = bool2state(self.safeties.get('left', True))
         self.center_widget.state = bool2state(self.mode_belt)
-        self.center_widget.text = 'ESCALIER' if self.mode_belt else 'BANDE'
+        direction_text = "Forward" if self.belt_direction else "Backward"
+        mode_text = 'ESCALIER' if self.mode_belt else 'BANDE'
+        self.center_widget.text = f"{mode_text}\n{direction_text}"
         self.right_widget.state = bool2state(self.safeties.get('right', True))
         self.bottom_widget.state = bool2state(self.safeties.get('bottom', True))
 
