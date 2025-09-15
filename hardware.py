@@ -144,6 +144,9 @@ class revPI() :
         value = self.rpi.io.encoder_feedback_speed.value
         return value * 3.6 / 1000   #convert mm/s to km/h
 
+    def get_belt_direction(self):
+        return self.rpi.io.belt_dir.value
+
     #return safety status on dict : front,back,right,left,emergency
     def get_safeties(self) :
         return {
