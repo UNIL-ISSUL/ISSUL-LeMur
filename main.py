@@ -268,13 +268,13 @@ class LeMurApp(App):
     def show_reverse_popup(self):
         content = BoxLayout(orientation='vertical', spacing=10)
         popup_label = Label(text='Choose direction')
-        forward_button = Button(text='Forward')
-        backward_button = Button(text='Backward')
+        forward_button = Button(text='Forward (UP)')
+        backward_button = Button(text='Backward (DOWN)')
         content.add_widget(popup_label)
         content.add_widget(forward_button)
         content.add_widget(backward_button)
 
-        popup = Popup(title='Reverse Treadmill',
+        popup = Popup(title='Treadmill Direction',
                       content=content,
                       size_hint=(None, None), size=(400, 200))
 
