@@ -102,6 +102,7 @@ class IncrementalWidget(BoxLayout):
         self.current_dot = None  # pour afficher le rond d'avancement
         self.actual_plot = None  # pour afficher les valeurs actuels
         self.treadmill = None
+        self.current_profile_path = None
 
     ### table section ***************************
     def _delayed_init(self, *args):
@@ -516,6 +517,7 @@ class IncrementalWidget(BoxLayout):
     
     def load_profile(self):
         def do_load(filepath):
+            self.current_profile_path = filepath
             if not os.path.exists(filepath):
                 return
             with open(filepath, newline="") as f:
@@ -574,3 +576,8 @@ class IncrementalWidget(BoxLayout):
     #connect with treadmill
     def set_treadmill(self, treadmill):
         self.treadmill = treadmill
+
+    def get_current_test_name(self):
+        if self.current_profile_path:
+            return os.path.splitext(os.path.basename(self.current_profile_path))[0]
+        return "incremental_test"
