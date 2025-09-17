@@ -67,6 +67,7 @@ class TreadmillController:
         self.hardware = hardware
         self.reset_variables()
         self.test_name = "manual_test"
+        self.subject_name = "sujet"
         # Event and log features
         self.event_list = []
         self.event_file = None
@@ -119,7 +120,7 @@ class TreadmillController:
         now_str = now.strftime('%Y-%m-%d-%H%M%S')
         event_folder = os.path.join(self.event_folder, now.strftime('%Y'), now.strftime('%m'), now.strftime('%d'))
         os.makedirs(event_folder, exist_ok=True)
-        event_path = os.path.join(event_folder, f'{now_str}_{self.test_name}-events.csv')
+        event_path = os.path.join(event_folder, f'{now_str}_{self.subject_name}_{self.test_name}-events.csv')
         self.event_file = open(event_path, 'w', newline='')
         writer = csv.DictWriter(self.event_file, fieldnames=['time','lift_angle_PV','belt_speed_PV','vertical_speed_PV','event'])
         writer.writeheader()
@@ -135,7 +136,7 @@ class TreadmillController:
         now_str = now.strftime('%Y-%m-%d-%H%M%S')
         log_folder = os.path.join(self.log_folder, now.strftime('%Y'), now.strftime('%m'), now.strftime('%d'))
         os.makedirs(log_folder, exist_ok=True)
-        log_path = os.path.join(log_folder, f'{now_str}_{self.test_name}-log.csv')
+        log_path = os.path.join(log_folder, f'{now_str}_{self.subject_name}_{self.test_name}-log.csv')
         self.log_file = open(log_path, 'w', newline='')
         self.log_writer = csv.DictWriter(self.log_file, fieldnames=[
             'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_m', 'event'
@@ -257,10 +258,11 @@ class TreadmillController:
             "belt_direction": self.belt_direction
         }
 
-    def start(self, test_name="manual_test"):
+    def start(self, test_name="manual_test", subject_name="sujet"):
         if not self.running:
             self.running = True
             self.test_name = test_name
+            self.subject_name = subject_name
             self.reset_variables()
             self.start_time = self.last_update_time = time()
             if self.hardware:

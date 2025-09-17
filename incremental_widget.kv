@@ -1,6 +1,18 @@
 <IncrementalWidget>:
     orientation: 'vertical'
     padding: [10, 10, 10, 10]
+
+    BoxLayout:
+        size_hint_y: None
+        height: '40dp'
+        Label:
+            text: 'Nom du sujet:'
+            size_hint_x: None
+            width: '100dp'
+        TextInput:
+            id: subject_name_input
+            text: 'sujet'
+            multiline: False
     #---- PARTIE TABLEAU DE SAISIE ----#
     BoxLayout:
         orientation: 'vertical'

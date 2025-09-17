@@ -247,15 +247,17 @@ class LeMurApp(App):
 
     def start(self, instance) :
         test_name = "manual_test"
+        subject_name = "sujet"
         #configure incremental widget
         if self.screen_manager.current == 'incremental_tab' :
             test_name = self.incremental_widget.get_current_test_name()
+            subject_name = self.incremental_widget.ids.subject_name_input.text
             #reset event if any
             if not self.treadmill.is_paused() :
                 self.incremental_widget.delete_event()
         #start treadmill
         if instance.state == 'down' :
-            self.treadmill.start(test_name=test_name)
+            self.treadmill.start(test_name=test_name, subject_name=subject_name)
     
     def pause(self, instance) :
         #pause treadmill
