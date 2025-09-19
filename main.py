@@ -259,38 +259,38 @@ class LeMurApp(App):
             #reset event if any
             if not self.treadmill.is_paused() :
                 self.incremental_widget.delete_event()
-        #start treadmill
-        if instance.state == 'down' :
-            self.treadmill.start(test_name=test_name, subject_name=subject_name)
-    
-            elapsed_time = self.treadmill.get_elapsed_time()
-            angle = self.incremental_widget.get_angle(elapsed_time)
+            #start treadmill
+            if instance.state == 'down' :
+                self.treadmill.start(test_name=test_name, subject_name=subject_name)
+        
+                elapsed_time = self.treadmill.get_elapsed_time()
+                angle = self.incremental_widget.get_angle(elapsed_time)
 
-            content = BoxLayout(orientation='vertical', spacing=10)
-            popup_label = Label(text=f'Régler l\'inclinaison à {angle:.2f}°?')
+                content = BoxLayout(orientation='vertical', spacing=10)
+                popup_label = Label(text=f'Régler l\'inclinaison à {angle:.2f}°?')
 
-            move_button = Button(text='Déplacer le lift')
-            start_button = Button(text='Démarrer le test')
+                move_button = Button(text='Déplacer le lift')
+                start_button = Button(text='Démarrer le test')
 
-            content.add_widget(popup_label)
-            content.add_widget(move_button)
-            content.add_widget(start_button)
+                content.add_widget(popup_label)
+                content.add_widget(move_button)
+                content.add_widget(start_button)
 
-            popup = Popup(title='Test Incrémental',
-                          content=content,
-                          size_hint=(None, None), size=(400, 200),
-                          auto_dismiss=True)
+                popup = Popup(title='Test Incrémental',
+                            content=content,
+                            size_hint=(None, None), size=(400, 200),
+                            auto_dismiss=True)
 
-            move_button.bind(on_press=lambda *args: self.move_lift_popup(angle, move_button))
-            start_button.bind(on_press=lambda *args: self.start_test_from_popup(popup))
+                move_button.bind(on_press=lambda *args: self.move_lift_popup(angle, move_button))
+                start_button.bind(on_press=lambda *args: self.start_test_from_popup(popup))
 
-            def on_dismiss(_):
-                # If the popup is dismissed without starting, reset the start button
-                if not self.treadmill.is_running():
-                    instance.state = 'normal'
+                def on_dismiss(_):
+                    # If the popup is dismissed without starting, reset the start button
+                    if not self.treadmill.is_running():
+                        instance.state = 'normal'
 
-            popup.bind(on_dismiss=on_dismiss)
-            popup.open()
+                popup.bind(on_dismiss=on_dismiss)
+                popup.open()
         else:
             #start treadmill for manual mode
             if instance.state == 'down' :
