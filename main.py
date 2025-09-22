@@ -327,7 +327,7 @@ class LeMurApp(App):
 
         popup = Popup(title='Treadmill Direction',
                       content=content,
-                      size_hint=(None, None), size=(400, 200))
+                      size_hint=(None, None), size=(600, 400))
 
         def set_reverse_and_dismiss(direction):
             self.set_reverse(direction)
