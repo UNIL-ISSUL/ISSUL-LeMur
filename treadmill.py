@@ -139,7 +139,7 @@ class TreadmillController:
         log_path = os.path.join(log_folder, f'{now_str}_{self.subject_name}_{self.test_name}-log.csv')
         self.log_file = open(log_path, 'w', newline='')
         self.log_writer = csv.DictWriter(self.log_file, fieldnames=[
-            'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_m', 'event'
+            'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'event'
         ])
         self.log_writer.writeheader()
         # Start the logging thread
@@ -162,7 +162,8 @@ class TreadmillController:
 
     def reset_variables(self):
         self.distance_m = 0
-        self.elevation_m = 0
+        self.elevation_pos_m = 0
+        self.elevation_neg_m = 0
         self.elapsed_time = 0
         self.start_time = 0
         self.pause_time = 0
@@ -217,7 +218,13 @@ class TreadmillController:
             delta_time = current_time - self.last_update_time
             if delta_time > 0:
                 self.distance_m += (self.belt_speed_PV * 1000 / 3600) * delta_time
-                self.elevation_m += (self.vertical_speed_PV / 3600) * delta_time
+                delta_elevation = (self.vertical_speed_PV / 3600) * delta_time
+                if not self.belt_direction: #if backward
+                    delta_elevation = -delta_elevation
+                if delta_elevation > 0:
+                    self.elevation_pos_m += delta_elevation
+                else:
+                    self.elevation_neg_m += delta_elevation
             self.last_update_time = current_time
             
             # Log to file if running by putting data in the queue
@@ -238,7 +245,8 @@ class TreadmillController:
                     'vertical_speed_SP': compute_vertical_speed_mh(self.lift_angle_SP, self.belt_speed_SP),
                     'vertical_speed_PV': self.vertical_speed_PV,
                     'distance_m': self.distance_m,
-                    'elevation_m': self.elevation_m,
+                    'elevation_pos_m': self.elevation_pos_m,
+                    'elevation_neg_m': self.elevation_neg_m,
                     'event': event_str
                 }
                 self.log_queue.put(log_data)
@@ -253,7 +261,8 @@ class TreadmillController:
             "vertical_speed_SP": float(compute_vertical_speed_mh(self.lift_angle_SP,self.belt_speed_SP)),
             "safeties": self.safeties,
             "distance_m": self.distance_m,
-            "elevation_m": self.elevation_m,
+            "elevation_pos_m": self.elevation_pos_m,
+            "elevation_neg_m": self.elevation_neg_m,
             "elapsed_time": self.elapsed_time,
             "belt_direction": self.belt_direction
         }
@@ -342,8 +351,11 @@ class TreadmillController:
     def get_distance(self):
         return self.distance_m
 
-    def get_elevation(self):
-        return self.elevation_m
+    def get_elevation_pos(self):
+        return self.elevation_pos_m
+
+    def get_elevation_neg(self):
+        return self.elevation_neg_m
 
     def get_elapsed_time(self):
         return self.elapsed_time

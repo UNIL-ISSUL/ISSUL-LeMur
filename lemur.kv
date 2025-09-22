@@ -132,10 +132,15 @@
         target : app.treadmill_status['belt_speed_SP']
         has_target : True
         font_size : root.font_size
-    NumericDisplay
-        name : 'Dénivelé'
+    NumericDisplay:
+        name : 'Dénivelé positif'
         unit : 'm'
-        value : app.treadmill_status['elevation_m']
+        value : app.treadmill_status['elevation_pos_m']
+        font_size : root.font_size
+    NumericDisplay:
+        name : 'Dénivelé négatif'
+        unit : 'm'
+        value : app.treadmill_status['elevation_neg_m']
         font_size : root.font_size
     NumericDisplay :
         name : 'Vitesse verticale'
