@@ -278,7 +278,7 @@ class LeMurApp(App):
 
                 popup = Popup(title='Test Incrémental',
                             content=content,
-                            size_hint=(None, None), size=(400, 200),
+                            size_hint=(None, None), size=(600, 400),
                             auto_dismiss=True)
 
                 move_button.bind(on_press=lambda *args: self.move_lift_popup(angle, move_button))
