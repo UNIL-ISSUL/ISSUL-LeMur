@@ -261,7 +261,10 @@ class LeMurApp(App):
                 self.incremental_widget.delete_event()
             #start treadmill
             if instance.state == 'down' :
-                elapsed_time = self.treadmill.get_elapsed_time()
+                if self.treadmill.is_paused() :
+                    elapsed_time = self.treadmill.get_elapsed_time()
+                else :
+                    elapsed_time = 0
                 angle = self.incremental_widget.get_angle(elapsed_time)
 
                 content = BoxLayout(orientation='vertical', spacing=10)
