@@ -169,7 +169,7 @@ class TreadmillController:
         self.pause_time = 0
         self.elapsed_pause_time = 0
         self.last_update_time = 0
-        self.treadmill_points = collections.deque(maxlen=2000)
+        self.treadmill_points = collections.deque(maxlen=4000)
         self.event_list = []
         self.update_counter = 0
 
@@ -199,7 +199,7 @@ class TreadmillController:
 
         # Downsample data for the live graph (1Hz)
         self.update_counter += 1
-        if self.update_counter % 10 == 0:
+        if self.update_counter % 5 == 0:
             #store treadmill points
             self.treadmill_points.append({
                 'time': self.elapsed_time,
