@@ -104,27 +104,52 @@ class TreadmillController:
 
     def record_event(self, event_name=None):
         """Record an event with the current elapsed time and optional name."""
-        event = {'time': self.elapsed_time, 'event': event_name, 'lift_angle_PV': self.lift_angle_PV, 'belt_speed_PV': self.belt_speed_PV, 'vertical_speed_PV': self.vertical_speed_PV}
+        now = datetime.now()
+        event = {
+            'datetime': now.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
+            'time': self.elapsed_time,
+            'belt_speed_SP': self.belt_speed_SP,
+            'belt_speed_PV': self.belt_speed_PV,
+            'lift_angle_SP': self.lift_angle_SP,
+            'lift_angle_PV': self.lift_angle_PV,
+            'vertical_speed_SP': compute_vertical_speed_mh(self.lift_angle_SP, self.belt_speed_SP),
+            'vertical_speed_PV': self.vertical_speed_PV,
+            'distance_m': self.distance_m,
+            'elevation_pos_m': self.elevation_pos_m,
+            'elevation_neg_m': self.elevation_neg_m,
+            'event': event_name,
+        }
         # Append to in-memory list
         self.event_list.append(event)
         #toggle log event
         self.log_event = True
         # Write to event file if open
         if self.event_file:
-            writer = csv.DictWriter(self.event_file, fieldnames=['time','lift_angle_PV','belt_speed_PV','vertical_speed_PV','event'])
+            # Check if the file is empty to write headers
+            is_new_file = self.event_file.tell() == 0
+            fieldnames = ['datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'event']
+            writer = csv.DictWriter(self.event_file, fieldnames=fieldnames)
+            if is_new_file:
+                writer.writeheader()
             writer.writerow(event)
             self.event_file.flush()
 
     def _open_event_file(self):
         now = datetime.now()
-        now_str = now.strftime('%Y-%m-%d-%H%M%S')
+        now_str = now.strftime('%Y-%m-%d-%H%M%S-%f')
         event_folder = os.path.join(self.event_folder, now.strftime('%Y'), now.strftime('%m'), now.strftime('%d'))
         os.makedirs(event_folder, exist_ok=True)
         event_path = os.path.join(event_folder, f'{now_str}_{self.subject_name}_{self.test_name}-events.csv')
-        self.event_file = open(event_path, 'w', newline='')
-        writer = csv.DictWriter(self.event_file, fieldnames=['time','lift_angle_PV','belt_speed_PV','vertical_speed_PV','event'])
-        writer.writeheader()
-        self.event_file.flush()
+
+        # Open in append mode and write header only if the file is new
+        file_exists = os.path.exists(event_path)
+        self.event_file = open(event_path, 'a', newline='')
+        if not file_exists:
+            fieldnames=['datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'event']
+            writer = csv.DictWriter(self.event_file, fieldnames=fieldnames)
+            writer.writeheader()
+            self.event_file.flush()
+
 
     def _close_event_file(self):
         if self.event_file:
@@ -133,13 +158,13 @@ class TreadmillController:
 
     def _open_log_file(self):
         now = datetime.now()
-        now_str = now.strftime('%Y-%m-%d-%H%M%S')
+        now_str = now.strftime('%Y-%m-%d-%H%M%S-%f')
         log_folder = os.path.join(self.log_folder, now.strftime('%Y'), now.strftime('%m'), now.strftime('%d'))
         os.makedirs(log_folder, exist_ok=True)
         log_path = os.path.join(log_folder, f'{now_str}_{self.subject_name}_{self.test_name}-log.csv')
         self.log_file = open(log_path, 'w', newline='')
         self.log_writer = csv.DictWriter(self.log_file, fieldnames=[
-            'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'event'
+            'datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'event'
         ])
         self.log_writer.writeheader()
         # Start the logging thread
@@ -237,6 +262,7 @@ class TreadmillController:
                     event_str = ''
                 
                 log_data = {
+                    'datetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
                     'time': self.elapsed_time,
                     'belt_speed_SP': self.belt_speed_SP,
                     'belt_speed_PV': self.belt_speed_PV,

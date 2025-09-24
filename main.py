@@ -22,7 +22,6 @@ from utils.treadmill_layout import TreadmillLayout
 
 
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
-#import controler
 import hardware
 import treadmill
 from treadmill import compute_vertical_speed_mh, compute_belt_speed, compute_tilt
