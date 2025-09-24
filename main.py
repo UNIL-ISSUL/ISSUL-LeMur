@@ -261,8 +261,6 @@ class LeMurApp(App):
                 self.incremental_widget.delete_event()
             #start treadmill
             if instance.state == 'down' :
-                self.treadmill.start(test_name=test_name, subject_name=subject_name)
-        
                 elapsed_time = self.treadmill.get_elapsed_time()
                 angle = self.incremental_widget.get_angle(elapsed_time)
 
@@ -282,7 +280,7 @@ class LeMurApp(App):
                             auto_dismiss=True)
 
                 move_button.bind(on_press=lambda *args: self.move_lift_popup(angle, move_button))
-                start_button.bind(on_press=lambda *args: self.start_test_from_popup(popup))
+                start_button.bind(on_press=lambda *args: self.start_test_from_popup(popup, test_name, subject_name))
 
                 def on_dismiss(_):
                     # If the popup is dismissed without starting, reset the start button
@@ -300,10 +298,10 @@ class LeMurApp(App):
         self.treadmill.set_lift_angle(angle)
         button.disabled = True
 
-    def start_test_from_popup(self, popup):
+    def start_test_from_popup(self, popup, test_name, subject_name):
         if not self.treadmill.is_paused() :
             self.incremental_widget.delete_event()
-        self.treadmill.start()
+        self.treadmill.start(test_name=test_name, subject_name=subject_name)
         popup.dismiss()
 
     def pause(self, instance) :
