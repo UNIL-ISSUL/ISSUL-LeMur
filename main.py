@@ -150,6 +150,7 @@ class Ramp(BoxLayout) :
 
 
 class LeMurApp(App):
+    update_period = 0.1  # seconds
     #manual_widget_ids
     manual_widget_ids = None
     #treadmill Object
@@ -190,7 +191,7 @@ class LeMurApp(App):
         #attach treadmill to widget
         self.incremental_widget.set_treadmill(self.treadmill)
         #attach update event
-        Clock.schedule_interval(self.update_values,0.1)
+        Clock.schedule_interval(self.update_values, self.update_period)
         #update treadmill
         self.treadmill.update()
         self.tilt_target = self.treadmill.get_lift_angle()
@@ -229,7 +230,7 @@ class LeMurApp(App):
         #update incremental widget graph and setpoints if on incremental tab and treadmill is running
         if self.screen_manager.current == 'incremental_tab' and self.treadmill.is_running() :
             #update test return true if test is finished
-            test_finished = self.incremental_widget.update_test(0.1)
+            test_finished = self.incremental_widget.update_test(self.update_period)
             if test_finished:
                 Logger.info("Main : Test finished")
                 self.root.ids.controller.ids.stop.trigger_action()  #stop treadmill if test is done
