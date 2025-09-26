@@ -8,6 +8,9 @@ import revpimodio2
 from pathlib import Path
 from kivy.logger import Logger
 import yaml
+import os
+import csv
+from datetime import datetime
 
 #utils function
 def is_raspberry_pi() -> bool:
@@ -66,6 +69,9 @@ class revPI() :
         self.rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
         #close the program properly
         self.rpi.handlesignalend(cleanupfunc=self.stop_all)
+
+        # Schedule a check for lubrication after a delay to ensure I/O is ready
+        self.rpi.callafter(self.check_lubrication, delay=5)
 
     #mainloop to manage event on io
     def mainloop(self) :
@@ -160,6 +166,71 @@ class revPI() :
     #Set steps status
     def set_steps(self,active:bool) :
         self.rpi.io.use_steps.value = active
+
+    def check_lubrication(self, *args):
+        # NOTE: The following I/O variables are expected to be defined in the piCtory configuration:
+        # - belt_run_time_h (Input, Word)
+        # - belt_run_time_l (Input, Word)
+        # - belt_lub_pump (Output, Single Bit)
+
+        # Read lubrication settings from config
+        lub_interval_h = config.get('LUBRIFICATION_INTERVAL_H', 100)
+
+        # Merge high and low bytes of belt_run_time registers to get total hours
+        belt_run_time_h = merge_registers(self.rpi.io.belt_run_time_h.value, self.rpi.io.belt_run_time_l.value)
+
+        # Path to the lubrication log file
+        lub_log_file = Path(__file__).parent / 'lubrification.csv'
+
+        last_lub_time_h = 0
+        if lub_log_file.exists():
+            with open(lub_log_file, 'r') as f:
+                reader = csv.reader(f)
+                # Skip header
+                next(reader, None)
+                # Read the last entry
+                last_row = None
+                for row in reader:
+                    last_row = row
+                if last_row:
+                    last_lub_time_h = float(last_row[1])
+
+        # Check if lubrication is needed
+        if (belt_run_time_h - last_lub_time_h) >= lub_interval_h:
+            self.perform_lubrication(belt_run_time_h)
+
+    def perform_lubrication(self, belt_run_time_h):
+        pulse_duration_ms = config.get('LUBRIFICATION_PULSE_MS', 500)
+
+        # Activate the pump
+        self.rpi.io.belt_lub_pump.value = True
+        Logger.info(f"LUBRICATION: Pump ON for {pulse_duration_ms} ms.")
+
+        # Schedule to turn off the pump
+        self.rpi.callafter(self._turn_off_lub_pump, delay=pulse_duration_ms/1000)
+
+        # Log the event
+        self._log_lubrication_event(belt_run_time_h, pulse_duration_ms)
+
+    def _turn_off_lub_pump(self, *args):
+        self.rpi.io.belt_lub_pump.value = False
+        Logger.info("LUBRICATION: Pump OFF.")
+
+    def _log_lubrication_event(self, belt_run_time_h, pulse_duration_ms):
+        lub_log_file = Path(__file__).parent / 'lubrification.csv'
+        file_exists = lub_log_file.exists()
+
+        with open(lub_log_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['datetime', 'belt_run_time_h', 'pulse_duration_ms'])
+
+            writer.writerow([
+                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                belt_run_time_h,
+                pulse_duration_ms
+            ])
+        Logger.info("LUBRICATION: Event logged.")
 
 if __name__ == '__main__':
     import sys, select, os

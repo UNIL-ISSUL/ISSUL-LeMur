@@ -14,3 +14,7 @@ RADIUS_CYL_MM : 93      # Raduis of belt cynlinder on motor side 186/2
 BELT_MAX_FREQUENCY_HZ : 100
 BELT_MAX_SPEED_KMH : 40
 BELT_KMH2HZ_factor : 1.025   # experimental factor to convert km/h to Hz
+
+#LUBRIFICATION
+LUBRIFICATION_INTERVAL_H : 100
+LUBRIFICATION_PULSE_MS : 500
