@@ -194,7 +194,7 @@ class TreadmillController:
         self.pause_time = 0
         self.elapsed_pause_time = 0
         self.last_update_time = 0
-        self.treadmill_points = collections.deque(maxlen=10000)
+        self.treadmill_points = collections.deque(maxlen=16200) # 90 minutes of data at 3Hz
         self.event_list = []
         self.update_counter = 0
 
@@ -222,9 +222,9 @@ class TreadmillController:
         #compute vertical speed
         self.vertical_speed_PV = compute_vertical_speed_mh(self.lift_angle_PV,self.belt_speed_PV)
 
-        # Downsample data for the live graph (1Hz)
+        # Downsample data for the live graph (3Hz)
         self.update_counter += 1
-        if self.update_counter % 2 == 0:
+        if self.update_counter % 3 == 0:
             #store treadmill points
             self.treadmill_points.append({
                 'time': self.elapsed_time,
