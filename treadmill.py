@@ -223,41 +223,42 @@ class TreadmillController:
 
     def update(self):
         # RAMP LOGIC
-        current_time_ramp = time()
-        if self.last_ramp_update_time == 0:
+        if self.is_running() or self.current_speed_command > 0:
+            current_time_ramp = time()
+            if self.last_ramp_update_time == 0:
+                self.last_ramp_update_time = current_time_ramp
+
+            delta_time_ramp = current_time_ramp - self.last_ramp_update_time
             self.last_ramp_update_time = current_time_ramp
 
-        delta_time_ramp = current_time_ramp - self.last_ramp_update_time
-        self.last_ramp_update_time = current_time_ramp
+            previous_speed_command = self.current_speed_command
 
-        previous_speed_command = self.current_speed_command
+            if self.current_speed_command != self.belt_speed_SP and delta_time_ramp > 0:
+                max_speed_change = self.belt_acc * delta_time_ramp
+                diff = self.belt_speed_SP - self.current_speed_command
 
-        if self.current_speed_command != self.belt_speed_SP and delta_time_ramp > 0:
-            max_speed_change = self.belt_acc * delta_time_ramp
-            diff = self.belt_speed_SP - self.current_speed_command
+                if abs(diff) <= max_speed_change:
+                    self.current_speed_command = self.belt_speed_SP
+                else:
+                    self.current_speed_command += math.copysign(max_speed_change, diff)
 
-            if abs(diff) <= max_speed_change:
-                self.current_speed_command = self.belt_speed_SP
-            else:
-                self.current_speed_command += math.copysign(max_speed_change, diff)
+                if self.hardware:
+                    self.hardware.set_belt_speed(self.current_speed_command)
 
+            # Start/Stop motor logic
             if self.hardware:
-                self.hardware.set_belt_speed(self.current_speed_command)
+                is_starting = previous_speed_command == 0 and self.current_speed_command > 0
+                is_stopping = previous_speed_command > 0 and self.current_speed_command == 0
 
-        # Start/Stop motor logic
-        if self.hardware:
-            is_starting = previous_speed_command == 0 and self.current_speed_command > 0
-            is_stopping = previous_speed_command > 0 and self.current_speed_command == 0
+                if is_starting and not self.belt_motor_active:
+                    self.hardware.start_belt()
+                    self.belt_motor_active = True
+                    Logger.info("Treadmill: Motor started")
 
-            if is_starting and not self.belt_motor_active:
-                self.hardware.start_belt()
-                self.belt_motor_active = True
-                Logger.info("Treadmill: Motor started")
-
-            if is_stopping and self.belt_motor_active:
-                self.hardware.stop_belt()
-                self.belt_motor_active = False
-                Logger.info("Treadmill: Motor stopped")
+                if is_stopping and self.belt_motor_active:
+                    self.hardware.stop_belt()
+                    self.belt_motor_active = False
+                    Logger.info("Treadmill: Motor stopped")
         #update PV
         if self.hardware:
             self.lift_angle_PV = self.hardware.get_lift_angle()
