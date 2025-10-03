@@ -251,7 +251,7 @@ class TreadmillController:
             if abs(diff) <= max_speed_change:
                 self.current_speed_command = self.belt_speed_SP
             else:
-                self.current_speed_command += math.sign(max_speed_change, diff)
+                self.current_speed_command += math.copysign(max_speed_change, diff)
 
             if self.hardware:
                 self.hardware.set_belt_speed(self.current_speed_command)
