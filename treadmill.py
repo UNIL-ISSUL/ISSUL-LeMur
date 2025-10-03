@@ -257,6 +257,8 @@ class TreadmillController:
             # RAMP LOGIC
             if self.current_speed_command != self.belt_speed_SP:
                 max_speed_change = self.belt_acc * delta_time
+                if max_speed_change > 0.5 :
+                    max_speed_change = self.belt_acc * delta_time #update at 10Hz
                 diff = self.belt_speed_SP - self.current_speed_command
 
                 if abs(diff) <= max_speed_change:
@@ -264,12 +266,13 @@ class TreadmillController:
                 else:
                     # Increment or decrement speed command towards setpoint
                     # if PV is close to current command increment current_speed_command
-                    if abs(self.belt_speed_PV - self.current_speed_command) < max_speed_change / 2 :
-                        self.current_speed_command += math.copysign(max_speed_change, diff)
+                    #if abs(self.belt_speed_PV - self.current_speed_command) <= 0.5 :
+                    self.current_speed_command += math.copysign(max_speed_change, diff)
 
                 if self.hardware:
                     self.hardware.set_belt_speed(self.current_speed_command)
-                #print(f"Ramp: current {self.current_speed_command}, target {self.belt_speed_SP}, diff {diff}, max change {max_speed_change}")
+                #print("max speed change :" + str(max_speed_change) )
+                print("current_speed_command :"+str(self.current_speed_command)+" PV :"+str(self.belt_speed_PV))
             
             #compute distance and elevation
             if delta_time > 0:
