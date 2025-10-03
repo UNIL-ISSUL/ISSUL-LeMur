@@ -254,12 +254,11 @@ class TreadmillController:
                 self.last_update_time = current_time
 
             self.elapsed_time = current_time - self.start_time - self.elapsed_pause_time
-            #compute distance and elevation
             delta_time = current_time - self.last_update_time
 
             # RAMP LOGIC
             if self.current_speed_command != self.belt_speed_SP and delta_time > 0:
-                max_speed_change = self.belt_acc * delta_time
+                max_speed_change = self.belt_acc * 0.1 #delta_time
                 diff = self.belt_speed_SP - self.current_speed_command
 
                 if abs(diff) <= max_speed_change:
@@ -269,7 +268,7 @@ class TreadmillController:
 
                 if self.hardware:
                     self.hardware.set_belt_speed(self.current_speed_command)
-
+            #compute distance and elevation
             if delta_time > 0:
                 self.distance_m += (self.belt_speed_PV * 1000 / 3600) * delta_time
                 delta_elevation = (self.vertical_speed_PV / 3600) * delta_time
