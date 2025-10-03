@@ -264,7 +264,7 @@ class TreadmillController:
                 else:
                     # Increment or decrement speed command towards setpoint
                     # if PV is close to current command increment current_speed_command
-                    if abs(self.belt_speed_PV - self.current_speed_command) < max_speed_change /4 :
+                    if abs(self.belt_speed_PV - self.current_speed_command) < max_speed_change / 2 :
                         self.current_speed_command += math.copysign(max_speed_change, diff)
 
                 if self.hardware:
