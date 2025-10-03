@@ -180,17 +180,6 @@
                     height: self.minimum_height
                     row_default_height: "30dp"
                     row_force_default: True
-        
-        BoxLayout:
-            size_hint_y: None
-            height: "40dp"
-            Button:
-                #size_hint_x: 0.2
-                width: "100dp"
-                angle: root.test_points[0]['incl'] if root.test_points else "n/a"
-                text: "Régler l'inclinaison à "+str(self.angle)+"°"
-                id : init_button
-                on_release: root.goto_0()
 
 
         

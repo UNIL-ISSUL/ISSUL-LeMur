@@ -351,6 +351,7 @@ class TreadmillController:
         if self.running and not self.paused:
             self.paused = True
             self.pause_time = time()
+            self.current_speed_command = 0
             if self.hardware:
                 self.hardware.stop_belt()
             Logger.info(f"Treadmill: Paused at {self.pause_time}")
@@ -359,7 +360,6 @@ class TreadmillController:
     def stop(self):
         self.running = False
         self.paused = False
-        self.belt_speed_SP = 0
         self.current_speed_command = 0
         if self.hardware:
             self.hardware.stop_belt()

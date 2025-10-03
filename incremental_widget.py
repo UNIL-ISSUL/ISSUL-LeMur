@@ -374,17 +374,6 @@ class IncrementalWidget(BoxLayout):
         test_finished = self.test_points and current_time >= self.test_points[-1]['time']
         return test_finished
     
-    def goto_0(self):
-        #do not init id test is on_going
-        if self.test_running:
-            return
-        #get angle at time 0
-        angle = self.get_angle(0)
-        #move lift
-        if self.treadmill:
-            self.treadmill.set_lift_angle(angle)
-
-    
     def update_graph_dot(self, treadmill_points):
         #show a vertical line at the current time on the graph
         if not self.current_dot:
