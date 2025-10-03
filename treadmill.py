@@ -268,6 +268,7 @@ class TreadmillController:
 
                 if self.hardware:
                     self.hardware.set_belt_speed(self.current_speed_command)
+                print(f"Ramp: current {self.current_speed_command}, target {self.belt_speed_SP}, diff {diff}, max change {max_speed_change}")
             #compute distance and elevation
             if delta_time > 0:
                 self.distance_m += (self.belt_speed_PV * 1000 / 3600) * delta_time
