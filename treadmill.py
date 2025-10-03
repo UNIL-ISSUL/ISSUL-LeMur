@@ -242,21 +242,6 @@ class TreadmillController:
                 'incl': self.lift_angle_PV,
                 'asc': self.vertical_speed_PV
             })
-            
-        # RAMP LOGIC
-        if self.current_speed_command != self.belt_speed_SP:
-            max_speed_change = self.belt_acc * 0.1
-            diff = self.belt_speed_SP - self.current_speed_command
-
-            if abs(diff) <= max_speed_change:
-                self.current_speed_command = self.belt_speed_SP
-            else:
-                self.current_speed_command += math.copysign(max_speed_change, diff)
-
-            if self.hardware:
-                self.hardware.set_belt_speed(self.current_speed_command)
-            #print(f"Ramp: current {self.current_speed_command}, target {self.belt_speed_SP}, diff {diff}, max change {max_speed_change}")
-
 
         #update running value
         if self.is_running():
@@ -268,6 +253,20 @@ class TreadmillController:
 
             self.elapsed_time = current_time - self.start_time - self.elapsed_pause_time
             delta_time = current_time - self.last_update_time
+            
+            # RAMP LOGIC
+            if self.current_speed_command != self.belt_speed_SP:
+                max_speed_change = self.belt_acc * 0.1
+                diff = self.belt_speed_SP - self.current_speed_command
+
+                if abs(diff) <= max_speed_change:
+                    self.current_speed_command = self.belt_speed_SP
+                else:
+                    self.current_speed_command += math.copysign(max_speed_change, diff)
+
+                if self.hardware:
+                    self.hardware.set_belt_speed(self.current_speed_command)
+                #print(f"Ramp: current {self.current_speed_command}, target {self.belt_speed_SP}, diff {diff}, max change {max_speed_change}")
             
             #compute distance and elevation
             if delta_time > 0:
