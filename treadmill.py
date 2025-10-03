@@ -257,14 +257,14 @@ class TreadmillController:
             delta_time = current_time - self.last_update_time
 
             # RAMP LOGIC
-            if self.current_speed_command != self.belt_speed_SP and delta_time > 0:
+            if self.current_speed_command != self.belt_speed_SP:
                 max_speed_change = self.belt_acc * 0.1 #delta_time
                 diff = self.belt_speed_SP - self.current_speed_command
 
                 if abs(diff) <= max_speed_change:
                     self.current_speed_command = self.belt_speed_SP
                 else:
-                    self.current_speed_command += math.copysign(max_speed_change, diff)
+                    self.current_speed_command += max_speed_change, diff
 
                 if self.hardware:
                     self.hardware.set_belt_speed(self.current_speed_command)
