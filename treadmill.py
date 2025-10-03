@@ -85,7 +85,6 @@ class TreadmillController:
         self.reset_variables()
         self.belt_acc = config['BELT_ACC']
         self.current_speed_command = 0
-        self.belt_motor_active = False
         self.test_name = "manual_test"
         self.subject_name = "sujet"
         # Event and log features
@@ -214,51 +213,12 @@ class TreadmillController:
         self.pause_time = 0
         self.elapsed_pause_time = 0
         self.last_update_time = 0
-        self.last_ramp_update_time = 0
-        self.speed_before_pause = 0
-        self.belt_motor_active = False
+        self.current_speed_command = 0
         self.treadmill_points = collections.deque(maxlen=16200) # 90 minutes of data at 3Hz
         self.event_list = []
         self.update_counter = 0
 
     def update(self):
-        # RAMP LOGIC
-        if self.is_running() or self.current_speed_command > 0:
-            current_time_ramp = time()
-            if self.last_ramp_update_time == 0:
-                self.last_ramp_update_time = current_time_ramp
-
-            delta_time_ramp = current_time_ramp - self.last_ramp_update_time
-            self.last_ramp_update_time = current_time_ramp
-
-            previous_speed_command = self.current_speed_command
-
-            if self.current_speed_command != self.belt_speed_SP and delta_time_ramp > 0:
-                max_speed_change = self.belt_acc * delta_time_ramp
-                diff = self.belt_speed_SP - self.current_speed_command
-
-                if abs(diff) <= max_speed_change:
-                    self.current_speed_command = self.belt_speed_SP
-                else:
-                    self.current_speed_command += math.copysign(max_speed_change, diff)
-
-                if self.hardware:
-                    self.hardware.set_belt_speed(self.current_speed_command)
-
-            # Start/Stop motor logic
-            if self.hardware:
-                is_starting = previous_speed_command == 0 and self.current_speed_command > 0
-                is_stopping = previous_speed_command > 0 and self.current_speed_command == 0
-
-                if is_starting and not self.belt_motor_active:
-                    self.hardware.start_belt()
-                    self.belt_motor_active = True
-                    Logger.info("Treadmill: Motor started")
-
-                if is_stopping and self.belt_motor_active:
-                    self.hardware.stop_belt()
-                    self.belt_motor_active = False
-                    Logger.info("Treadmill: Motor stopped")
         #update PV
         if self.hardware:
             self.lift_angle_PV = self.hardware.get_lift_angle()
@@ -286,12 +246,30 @@ class TreadmillController:
 
 
         #update running value
-        if self.running and not self.paused:
+        if self.is_running():
             #update elapsed time
             current_time = time()
+            #init time if first loop
+            if self.last_update_time == 0:
+                self.last_update_time = current_time
+
             self.elapsed_time = current_time - self.start_time - self.elapsed_pause_time
             #compute distance and elevation
             delta_time = current_time - self.last_update_time
+
+            # RAMP LOGIC
+            if self.current_speed_command != self.belt_speed_SP and delta_time > 0:
+                max_speed_change = self.belt_acc * delta_time
+                diff = self.belt_speed_SP - self.current_speed_command
+
+                if abs(diff) <= max_speed_change:
+                    self.current_speed_command = self.belt_speed_SP
+                else:
+                    self.current_speed_command += math.copysign(max_speed_change, diff)
+
+                if self.hardware:
+                    self.hardware.set_belt_speed(self.current_speed_command)
+
             if delta_time > 0:
                 self.distance_m += (self.belt_speed_PV * 1000 / 3600) * delta_time
                 delta_elevation = (self.vertical_speed_PV / 3600) * delta_time
@@ -351,6 +329,8 @@ class TreadmillController:
             self.subject_name = subject_name
             self.reset_variables()
             self.start_time = self.last_update_time = time()
+            if self.hardware:
+                self.hardware.start_belt()
             Logger.info(f"Treadmill: Starting at {self.start_time}")
             # Open log and event files
             self._open_log_file()
@@ -359,9 +339,10 @@ class TreadmillController:
             self.record_event('start')
         if self.paused:
             self.paused = False
-            self.belt_speed_SP = self.speed_before_pause
             self.last_update_time = time()
             self.elapsed_pause_time += time() - self.pause_time
+            if self.hardware:
+                self.hardware.start_belt()
             Logger.info(f"Treadmill: Resumed at {time()}")
             #Write resume event
             self.record_event('resume')
@@ -370,8 +351,8 @@ class TreadmillController:
         if self.running and not self.paused:
             self.paused = True
             self.pause_time = time()
-            self.speed_before_pause = self.belt_speed_SP
-            self.belt_speed_SP = 0
+            if self.hardware:
+                self.hardware.stop_belt()
             Logger.info(f"Treadmill: Paused at {self.pause_time}")
             self.record_event('pause')
 
@@ -379,6 +360,9 @@ class TreadmillController:
         self.running = False
         self.paused = False
         self.belt_speed_SP = 0
+        self.current_speed_command = 0
+        if self.hardware:
+            self.hardware.stop_belt()
         Logger.info(f"Treadmill: Stopped at {time()}")
         self.record_event('stop')
         self._close_log_file()
