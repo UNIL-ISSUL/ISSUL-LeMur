@@ -147,23 +147,29 @@
                 on_release: root.add_event()
    
         GridLayout:
-            cols: 4
+            cols: 7
             size_hint_y: None
-            height: self.minimum_height
-            row_default_height: "30dp"
+            height: "30dp"
+            row_default_height: 30
             row_force_default: True
+            padding: [0, 4]
+            spacing: [4, 4]
 
             # En-têtes
             Label: 
                 text: "Temps [s]"
             Label: 
-                text: "Vitesse [km/h]"
+                text: "Vitesse SP"
+            Label:
+                text: "Vitesse PV"
             Label: 
-                text: "Inclinaison [°]"
+                text: "Inclinaison SP"
+            Label:
+                text: "Inclinaison PV"
             Label: 
-                text: "Vitesse Asc. [m/h]"
-            # Label: 
-            #     text: ""
+                text: "Vitesse Asc. SP"
+            Label:
+                text: "Vitesse Asc. PV"
 
         BoxLayout:         # conteneur pour ScrollView
             orientation: 'vertical'
@@ -175,7 +181,7 @@
                 size_hint_y: 1
                 GridLayout:
                     id: events_grid
-                    cols: 4
+                    cols: 7
                     size_hint_y: None
                     height: self.minimum_height
                     row_default_height: "30dp"

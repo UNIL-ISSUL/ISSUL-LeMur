@@ -313,20 +313,34 @@ class IncrementalWidget(BoxLayout):
         grid.clear_widgets()
         for event in self.events:
             grid.add_widget(Label(text="{:.2f}".format(event["time"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["speed"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["angle"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["asc"])))
+            grid.add_widget(Label(text="{:.2f}".format(event["speed_sp"])))
+            grid.add_widget(Label(text="{:.2f}".format(event["speed_pv"])))
+            grid.add_widget(Label(text="{:.2f}".format(event["angle_sp"])))
+            grid.add_widget(Label(text="{:.2f}".format(event["angle_pv"])))
+            grid.add_widget(Label(text="{:.2f}".format(event["asc_sp"])))
+            grid.add_widget(Label(text="{:.2f}".format(event["asc_pv"])))
             #grid.add_widget(Button(text="Supprimer", on_release=lambda btn, ev=event: self.delete_event(ev)))
     
     def add_event(self):
-        self.treadmill.record_event("incremental test event")
+        self.treadmill.record_event("user event")
         #add a new event at the current time
-        current_time = self.elapsed_time  # ou variable que tu utilises
-        speed = self.treadmill.get_belt_speed() if self.treadmill else 0
-        angle = self.treadmill.get_lift_angle() if self.treadmill else 0
-        asc = self.treadmill.get_vertical_speed() if self.treadmill else 0
+        current_time = self.elapsed_time
 
-        new_event = {"time": current_time, "speed": speed, "angle": angle, "asc": asc}
+        #get setpoints
+        speed_sp = self.get_speed(current_time)
+        angle_sp = self.get_angle(current_time)
+        asc_sp = self.get_speed_asc(current_time)
+        #get process values
+        speed_pv = self.treadmill.get_belt_speed() if self.treadmill else 0
+        angle_pv = self.treadmill.get_lift_angle() if self.treadmill else 0
+        asc_pv = self.treadmill.get_vertical_speed() if self.treadmill else 0
+
+        new_event = {
+            "time": current_time,
+            "speed_sp": speed_sp, "speed_pv": speed_pv,
+            "angle_sp": angle_sp, "angle_pv": angle_pv,
+            "asc_sp": asc_sp, "asc_pv": asc_pv
+        }
         self.events.append(new_event)
         self.draw_event_line(current_time)
         self.refresh_events()
@@ -524,43 +538,6 @@ class IncrementalWidget(BoxLayout):
         self.open_file_dialog("load", do_load)
 
 
-    ### EXPORT evnts section ***************************
-    def export_events_as_csv(self):
-        #if test is running, do nothing
-        if self.test_running:
-            return
-        layout = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        input_name = TextInput(hint_text="Nom du test", multiline=False, size_hint_y=None, height="40dp")
-        layout.add_widget(input_name)
-
-        def save_csv(_):
-            name = input_name.text.strip().replace(" ", "_")
-            if not name:
-                return
-            date = date = datetime.now().strftime("%Y-%m-%d-%H%M%S")
-            filename = f"{date}-{name}.csv"
-            filepath = os.path.join("events", filename)
-            self.write_events_to_csv(self.events, filepath)
-            popup.dismiss()
-
-        btn = Button(text="Exporter", size_hint_y=None, height="40dp")
-        btn.bind(on_press=save_csv)
-        layout.add_widget(btn)
-
-        popup = Popup(title="Exporter les événements en CSV", content=layout, size_hint=(0.8, 0.4))
-        popup.open()
-    
-    def write_events_to_csv(self,events, filepath):
-        with open(filepath, mode="w", newline="", encoding="utf-8") as file:
-            writer = csv.writer(file)
-            writer.writerow(["Temps (s)", "Vitesse (km/h)", "Inclinaison (°)", "Vitesse verticale (m*/h)"])
-            for ev in events:
-                writer.writerow([
-                    ev.get("time", ""),
-                    ev.get("speed", ""),
-                    ev.get("angle", ""),
-                    ev.get("asc", ""),
-                ])
     
     #connect with treadmill
     def set_treadmill(self, treadmill):
