@@ -255,7 +255,7 @@ class TreadmillController:
 
             if self.hardware:
                 self.hardware.set_belt_speed(self.current_speed_command)
-            print(f"Ramp: current {self.current_speed_command}, target {self.belt_speed_SP}, diff {diff}, max change {max_speed_change}")
+            #print(f"Ramp: current {self.current_speed_command}, target {self.belt_speed_SP}, diff {diff}, max change {max_speed_change}")
 
 
         #update running value
