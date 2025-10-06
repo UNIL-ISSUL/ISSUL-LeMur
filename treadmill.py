@@ -98,8 +98,8 @@ class TreadmillController:
         self.max_drift = 1.0 + (max_drift_pct / 100.0)
 
         self.drift = 1.0
-        self.pv_history = collections.deque(maxlen=10)
-        self.sp_history = collections.deque(maxlen=10)
+        self.pv_history = collections.deque(maxlen=20)
+        self.sp_history = collections.deque(maxlen=20)
         self.compensated_belt_speed_SP = 0
 
     def _log_worker(self):
@@ -249,6 +249,7 @@ class TreadmillController:
             if len(self.pv_history) == self.pv_history.maxlen:
                 pv_array = np.array(self.pv_history)
                 sp_array = np.array(self.sp_history)
+                self.pv_history.clear()
 
                 non_zero_sp_mask = sp_array != 0
                 if np.any(non_zero_sp_mask):
