@@ -90,7 +90,7 @@ class TreadmillController:
         if config_path.exists():
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f)
-                max_drift_pct = config.get('max_drift_pct', 10)
+                max_drift_pct = config['max_drift_pct']
         else:
             max_drift_pct = 10
 
@@ -242,36 +242,39 @@ class TreadmillController:
         self.vertical_speed_PV = compute_vertical_speed_mh(self.lift_angle_PV,self.belt_speed_PV)
 
         # Belt drift compensation
-        self.pv_history.append(self.belt_speed_PV)
-        self.sp_history.append(self.belt_speed_SP)
+        if self.is_running() and self.belt_speed_SP != 0:
+            self.pv_history.append(self.belt_speed_PV)
+            self.sp_history.append(self.belt_speed_SP)
+            drift = self.drift
+            if len(self.pv_history) == self.pv_history.maxlen:
+                pv_array = np.array(self.pv_history)
+                sp_array = np.array(self.sp_history)
 
-        if len(self.pv_history) == self.pv_history.maxlen:
-            pv_array = np.array(self.pv_history)
-            sp_array = np.array(self.sp_history)
+                non_zero_sp_mask = sp_array != 0
+                if np.any(non_zero_sp_mask):
+                    ratios = sp_array[non_zero_sp_mask] / pv_array[non_zero_sp_mask]
+                    ratios = ratios[np.isfinite(ratios)]
 
-            non_zero_sp_mask = sp_array != 0
-            if np.any(non_zero_sp_mask):
-                ratios = pv_array[non_zero_sp_mask] / sp_array[non_zero_sp_mask]
-                ratios = ratios[np.isfinite(ratios)]
+                    if ratios.size > 0:
+                        mean_drift = np.mean(ratios)
+                        drift = np.clip(mean_drift, self.min_drift, self.max_drift)
+                        #truncate 0.001
+                        drift = np.round(drift, 2)
+            #update drift only if it changed to avoid unnecessary belt speed updates
+            if drift != self.drift:
+                self.drift = drift
+                self.update_belt_speed()
 
-                if ratios.size > 0:
-                    mean_drift = np.mean(ratios)
-                    self.drift = np.clip(mean_drift, self.min_drift, self.max_drift)
-
-            self.compensated_belt_speed_SP = self.belt_speed_SP * self.drift
-            if self.hardware:
-                self.hardware.set_belt_speed(self.compensated_belt_speed_SP)
-
-        # Downsample data for the live graph (3Hz)
-        self.update_counter += 1
-        if self.update_counter % 3 == 0:
-            #store treadmill points
-            self.treadmill_points.append({
-                'time': self.elapsed_time,
-                'speed': self.belt_speed_PV,
-                'incl': self.lift_angle_PV,
-                'asc': self.vertical_speed_PV
-            })
+            # Downsample data for the live graph (3Hz)
+            self.update_counter += 1
+            if self.update_counter % 3 == 0:
+                #store treadmill points
+                self.treadmill_points.append({
+                    'time': self.elapsed_time,
+                    'speed': self.belt_speed_PV,
+                    'incl': self.lift_angle_PV,
+                    'asc': self.vertical_speed_PV
+                })
 
 
         #update running value
@@ -385,11 +388,14 @@ class TreadmillController:
 
     def set_belt_speed(self, speed):
         self.belt_speed_SP = speed
+        self.update_belt_speed()
+    
+    def update_belt_speed(self):
         self.compensated_belt_speed_SP = self.belt_speed_SP * self.drift
         if self.hardware:
             self.hardware.set_belt_speed(self.compensated_belt_speed_SP)
-        Logger.info(f"Treadmill: Set belt speed SP to {speed}. With current drift of {self.drift:.2f}, compensated SP is {self.compensated_belt_speed_SP:.2f}")
-
+        Logger.info(f"Treadmill: Updated belt speed SP to {self.belt_speed_SP}. With current drift of {self.drift:.2f}, compensated SP is {self.compensated_belt_speed_SP:.2f}")
+    
     def reverse_belt(self, direction):
         self.belt_direction = direction
         if self.hardware:
