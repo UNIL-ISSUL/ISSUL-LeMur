@@ -2,6 +2,7 @@ import unittest
 import sys
 import os
 from time import sleep
+import yaml
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -11,6 +12,11 @@ from treadmill import TreadmillController
 class TestTreadmillController(unittest.TestCase):
 
     def setUp(self):
+        # Create a temporary yaml file for testing
+        self.config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'treadmill.yaml'))
+        with open(self.config_path, 'w') as f:
+            yaml.dump({'max_drift_pct': 20}, f)
+
         # Mock hardware, so we can test logic without real hardware
         self.treadmill = TreadmillController(hardware=None)
         # Start the treadmill for testing
@@ -21,6 +27,9 @@ class TestTreadmillController(unittest.TestCase):
 
     def tearDown(self):
         self.treadmill.stop()
+        # Remove the temporary yaml file
+        if os.path.exists(self.config_path):
+            os.remove(self.config_path)
 
     def test_elevation_forward_uphill(self):
         print("Testing forward uphill...")
@@ -85,27 +94,27 @@ class TestTreadmillController(unittest.TestCase):
         # Set a speed and simulate a lower PV for a while
         self.treadmill.set_belt_speed(10)
         for _ in range(10):
-            # Simulate a PV that is 15% lower than SP
-            self.treadmill.belt_speed_PV = 8.5
+            # Simulate a PV that is 25% lower than SP
+            self.treadmill.belt_speed_PV = 7.5
             self.treadmill.update()
             sleep(0.1)
 
-        # After 10 updates, drift should be calculated and clamped at 0.9
-        self.assertAlmostEqual(self.treadmill.drift, 0.9, places=2)
+        # After 10 updates, drift should be calculated and clamped at 0.8
+        self.assertAlmostEqual(self.treadmill.drift, 0.8, places=2)
 
         # The compensated speed should be lower
         self.assertLess(self.treadmill.compensated_belt_speed_SP, 10)
-        self.assertAlmostEqual(self.treadmill.compensated_belt_speed_SP, 10 * 0.9, places=2)
+        self.assertAlmostEqual(self.treadmill.compensated_belt_speed_SP, 10 * 0.8, places=2)
 
         # Now, simulate a PV that is higher than SP
         for _ in range(10):
-            self.treadmill.belt_speed_PV = 12
+            self.treadmill.belt_speed_PV = 13
             self.treadmill.update()
             sleep(0.1)
 
-        # Drift should be calculated and clamped at 1.1
-        self.assertAlmostEqual(self.treadmill.drift, 1.1, places=2)
-        self.assertAlmostEqual(self.treadmill.compensated_belt_speed_SP, 10 * 1.1, places=2)
+        # Drift should be calculated and clamped at 1.2
+        self.assertAlmostEqual(self.treadmill.drift, 1.2, places=2)
+        self.assertAlmostEqual(self.treadmill.compensated_belt_speed_SP, 10 * 1.2, places=2)
         print("OK")
 
 

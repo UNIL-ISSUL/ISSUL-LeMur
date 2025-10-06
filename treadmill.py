@@ -43,6 +43,8 @@ import threading
 from time import sleep
 import collections
 import numpy as np
+import yaml
+from pathlib import Path
 
 class TreadmillController:
     # variables
@@ -84,6 +86,17 @@ class TreadmillController:
         self.log_thread = None
         self.stop_logging_thread = threading.Event()
         # Belt drift compensation
+        config_path = Path(__file__).parent / 'treadmill.yaml'
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+                max_drift_pct = config.get('max_drift_pct', 10)
+        else:
+            max_drift_pct = 10
+
+        self.min_drift = 1.0 - (max_drift_pct / 100.0)
+        self.max_drift = 1.0 + (max_drift_pct / 100.0)
+
         self.drift = 1.0
         self.pv_history = collections.deque(maxlen=10)
         self.sp_history = collections.deque(maxlen=10)
@@ -243,7 +256,7 @@ class TreadmillController:
 
                 if ratios.size > 0:
                     mean_drift = np.mean(ratios)
-                    self.drift = np.clip(mean_drift, 0.9, 1.1)
+                    self.drift = np.clip(mean_drift, self.min_drift, self.max_drift)
 
             self.compensated_belt_speed_SP = self.belt_speed_SP * self.drift
             if self.hardware:
