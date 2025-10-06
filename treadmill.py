@@ -42,6 +42,7 @@ import queue
 import threading
 from time import sleep
 import collections
+import numpy as np
 
 class TreadmillController:
     # variables
@@ -82,6 +83,11 @@ class TreadmillController:
         self.log_queue = queue.Queue()
         self.log_thread = None
         self.stop_logging_thread = threading.Event()
+        # Belt drift compensation
+        self.drift = 1.0
+        self.pv_history = collections.deque(maxlen=10)
+        self.sp_history = collections.deque(maxlen=10)
+        self.compensated_belt_speed_SP = 0
 
     def _log_worker(self):
         """Worker thread for writing logs to file."""
@@ -222,6 +228,27 @@ class TreadmillController:
         #compute vertical speed
         self.vertical_speed_PV = compute_vertical_speed_mh(self.lift_angle_PV,self.belt_speed_PV)
 
+        # Belt drift compensation
+        self.pv_history.append(self.belt_speed_PV)
+        self.sp_history.append(self.belt_speed_SP)
+
+        if len(self.pv_history) == self.pv_history.maxlen:
+            pv_array = np.array(self.pv_history)
+            sp_array = np.array(self.sp_history)
+
+            non_zero_sp_mask = sp_array != 0
+            if np.any(non_zero_sp_mask):
+                ratios = pv_array[non_zero_sp_mask] / sp_array[non_zero_sp_mask]
+                ratios = ratios[np.isfinite(ratios)]
+
+                if ratios.size > 0:
+                    mean_drift = np.mean(ratios)
+                    self.drift = np.clip(mean_drift, 0.9, 1.1)
+
+            self.compensated_belt_speed_SP = self.belt_speed_SP * self.drift
+            if self.hardware:
+                self.hardware.set_belt_speed(self.compensated_belt_speed_SP)
+
         # Downsample data for the live graph (3Hz)
         self.update_counter += 1
         if self.update_counter % 3 == 0:
@@ -345,8 +372,10 @@ class TreadmillController:
 
     def set_belt_speed(self, speed):
         self.belt_speed_SP = speed
-        if self.hardware:   self.hardware.set_belt_speed(speed)
-        Logger.info(f"Treadmill: Set belt speed to {speed}")
+        self.compensated_belt_speed_SP = self.belt_speed_SP * self.drift
+        if self.hardware:
+            self.hardware.set_belt_speed(self.compensated_belt_speed_SP)
+        Logger.info(f"Treadmill: Set belt speed SP to {speed}. With current drift of {self.drift:.2f}, compensated SP is {self.compensated_belt_speed_SP:.2f}")
 
     def reverse_belt(self, direction):
         self.belt_direction = direction

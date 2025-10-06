@@ -1,3 +1,4 @@
 kivy
 kivy-garden
 PyYAML
+numpy

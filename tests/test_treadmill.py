@@ -80,5 +80,34 @@ class TestTreadmillController(unittest.TestCase):
         print("OK")
 
 
+    def test_drift_compensation(self):
+        print("Testing drift compensation...")
+        # Set a speed and simulate a lower PV for a while
+        self.treadmill.set_belt_speed(10)
+        for _ in range(10):
+            # Simulate a PV that is 15% lower than SP
+            self.treadmill.belt_speed_PV = 8.5
+            self.treadmill.update()
+            sleep(0.1)
+
+        # After 10 updates, drift should be calculated and clamped at 0.9
+        self.assertAlmostEqual(self.treadmill.drift, 0.9, places=2)
+
+        # The compensated speed should be lower
+        self.assertLess(self.treadmill.compensated_belt_speed_SP, 10)
+        self.assertAlmostEqual(self.treadmill.compensated_belt_speed_SP, 10 * 0.9, places=2)
+
+        # Now, simulate a PV that is higher than SP
+        for _ in range(10):
+            self.treadmill.belt_speed_PV = 12
+            self.treadmill.update()
+            sleep(0.1)
+
+        # Drift should be calculated and clamped at 1.1
+        self.assertAlmostEqual(self.treadmill.drift, 1.1, places=2)
+        self.assertAlmostEqual(self.treadmill.compensated_belt_speed_SP, 10 * 1.1, places=2)
+        print("OK")
+
+
 if __name__ == '__main__':
     unittest.main()
