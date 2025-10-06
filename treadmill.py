@@ -98,8 +98,8 @@ class TreadmillController:
         self.max_drift = 1.0 + (max_drift_pct / 100.0)
 
         self.drift = 1.0
-        self.pv_history = collections.deque(maxlen=20)
-        self.sp_history = collections.deque(maxlen=20)
+        self.pv_history = collections.deque(maxlen=15)
+        self.sp_history = collections.deque(maxlen=15)
         self.compensated_belt_speed_SP = 0
 
     def _log_worker(self):
@@ -249,21 +249,21 @@ class TreadmillController:
             if len(self.pv_history) == self.pv_history.maxlen:
                 pv_array = np.array(self.pv_history)
                 sp_array = np.array(self.sp_history)
-                self.pv_history.clear()
+                #self.pv_history.clear()
 
-                non_zero_sp_mask = sp_array != 0
+                non_zero_sp_mask = pv_array != 0
                 if np.any(non_zero_sp_mask):
                     ratios = sp_array[non_zero_sp_mask] / pv_array[non_zero_sp_mask]
                     ratios = ratios[np.isfinite(ratios)]
 
                     if ratios.size > 0:
-                        mean_drift = np.mean(ratios)
+                        mean_drift = np.median(ratios)
                         drift = np.clip(mean_drift, self.min_drift, self.max_drift)
                         #truncate 0.001
                         drift = np.round(drift, 2)
             #update drift only if it changed to avoid unnecessary belt speed updates
-            if drift != self.drift:
-                self.drift = drift
+            if drift != np.round(self.drift,2):
+                self.drift = self.drift + math.copysign(0.001,drift-1)
                 self.update_belt_speed()
 
             # Downsample data for the live graph (3Hz)
