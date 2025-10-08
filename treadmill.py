@@ -97,8 +97,8 @@ class TreadmillController:
         self.max_drift = 1.0 + (max_drift_pct / 100.0)
 
         self.drift = 1.0
-        self.pv_history = collections.deque(maxlen=15)
-        self.sp_history = collections.deque(maxlen=15)
+        self.pv_history = collections.deque(maxlen=9)
+        self.sp_history = collections.deque(maxlen=9)
         self.compensated_belt_speed_SP = 0
         self.reset_variables()
 
