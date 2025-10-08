@@ -1,3 +1,19 @@
+<TopBar>:
+    size_hint_y: None
+    height: '30dp'
+    BoxLayout:
+        orientation: 'horizontal'
+        Label:
+            text: app.revpi_cpu_load + " | " + app.revpi_mem_usage + " | " + app.revpi_cycle_time
+            halign: 'left'
+            valign: 'middle'
+            text_size: self.size
+        Label:
+            text: app.date_time
+            halign: 'right'
+            valign: 'middle'
+            text_size: self.size
+
 <NumericInput> :
     orientation : 'vertical'
     BoxLayout :
@@ -173,7 +189,7 @@
         text : 'Stop'
         state : 'down'
         group : 'controller'
-        on_press : app.stop(self)
+        on_press : app.stop_treadmill(self)
         font_size : root.font_size
 
 <Status@BoxLayout> :
@@ -321,65 +337,70 @@
             size: self.size
  
 
-BoxLayout :
-    orientation: 'horizontal'
-    padding : 10
-    spacing : 10
+BoxLayout:
+    orientation: 'vertical'
 
-    #Section principale
-    BoxLayout
-        orientation: "vertical"
-        spacing : 10
-        # --- Barre d'onglets ---
-        BoxLayout:
-            size_hint_y: None
-            height: "40dp"
+    TopBar:
 
-            ToggleButton:
-                allow_no_selection : False
-                text: "Contrôle manuel"
-                group: "tabs"
-                state: "down"
-                on_release: screen_manager.current = "manual_tab"
-
-            ToggleButton:
-                allow_no_selection : False
-                text: "Test incrémental"
-                group: "tabs"
-                on_release: screen_manager.current = "incremental_tab"
-        # --
-        Separator:
-            orientation: 'horizontal'
-
-        # --- Contenu des onglets ---
-        MainScreenManager:
-            id: screen_manager
-
-    # Séparateur visuel
-    Separator:
-        orientation: 'vertical'
-
-    # Section de droite
     BoxLayout:
-        orientation : 'vertical'
-        size_hint_x : 0.35
-        font_size : 20
+        orientation: 'horizontal'
+        padding : 10
         spacing : 10
 
-        Button :
-            text : 'Change direction'
-            on_press : app.show_reverse_popup()
-            font_size : self.font_size
-            height : '40dp'
-            size_hint_y : None
+        #Section principale
+        BoxLayout:
+            orientation: "vertical"
+            spacing : 10
+            # --- Barre d'onglets ---
+            BoxLayout:
+                size_hint_y: None
+                height: "40dp"
 
-        TreadmillLayout:
-            id: treadmill
-            font_size: 18
-            safeties : app.treadmill_status['safeties']
-            mode_belt : app.steps_active
-            belt_direction : app.treadmill_status['belt_direction']
+                ToggleButton:
+                    allow_no_selection : False
+                    text: "Contrôle manuel"
+                    group: "tabs"
+                    state: "down"
+                    on_release: screen_manager.current = "manual_tab"
 
-        Controller :
-            id : controller
-            font_size : self.font_size
+                ToggleButton:
+                    allow_no_selection : False
+                    text: "Test incrémental"
+                    group: "tabs"
+                    on_release: screen_manager.current = "incremental_tab"
+            # --
+            Separator:
+                orientation: 'horizontal'
+
+            # --- Contenu des onglets ---
+            MainScreenManager:
+                id: screen_manager
+
+        # Séparateur visuel
+        Separator:
+            orientation: 'vertical'
+
+        # Section de droite
+        BoxLayout:
+            orientation : 'vertical'
+            size_hint_x : 0.35
+            font_size : 20
+            spacing : 10
+
+            Button :
+                text : 'Change direction'
+                on_press : app.show_reverse_popup()
+                font_size : self.font_size
+                height : '40dp'
+                size_hint_y : None
+
+            TreadmillLayout:
+                id: treadmill
+                font_size: 18
+                safeties : app.treadmill_status['safeties']
+                mode_belt : app.steps_active
+                belt_direction : app.treadmill_status['belt_direction']
+
+            Controller :
+                id : controller
+                font_size : self.font_size

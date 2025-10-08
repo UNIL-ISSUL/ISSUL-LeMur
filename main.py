@@ -18,6 +18,7 @@ from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.uix.screenmanager import ScreenManager
 from utils.treadmill_layout import TreadmillLayout
+from kivy.properties import StringProperty
 
 
 
@@ -34,6 +35,9 @@ from time import strftime, localtime, gmtime, sleep
 #Config.set('kivy', 'keyboard_mode', 'systemanddock')
 
 class MainScreenManager(ScreenManager):
+    pass
+
+class TopBar(BoxLayout):
     pass
 
 class NumericInput(BoxLayout):
@@ -159,6 +163,12 @@ class LeMurApp(App):
     #UI properties
     belt_speed_target = NumericProperty(2.5)
     tilt_target = NumericProperty(27.5)
+
+    # Top bar properties
+    revpi_cpu_load = StringProperty("CPU: - %")
+    revpi_mem_usage = StringProperty("Mem: - %")
+    revpi_cycle_time = StringProperty("Cycle: - ms")
+    date_time = StringProperty("-")
     vertical_speed_target = NumericProperty(1000)
     #vertical_speed_control
     vertical_speed_mode = 0 #0 = manula, 1 = tilt, 2 = belt speed
@@ -238,6 +248,12 @@ class LeMurApp(App):
         #update treadmill status
         self.treadmill_status = self.treadmill.update()
         
+        # Top bar data
+        self.date_time = strftime("%Y-%m-%d %H:%M:%S")
+        if self.treadmill.hardware:
+            self.revpi_cpu_load = f"CPU: {self.treadmill.hardware.get_cpu_load():.1f} %"
+            self.revpi_mem_usage = f"Mem: {self.treadmill.hardware.get_memory_usage():.1f} %"
+            self.revpi_cycle_time = f"Cycle: {self.treadmill.hardware.get_cycle_time()} ms"
         
         if self.revpi :
             #modbus status

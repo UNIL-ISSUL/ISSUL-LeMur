@@ -8,6 +8,7 @@ import revpimodio2
 from pathlib import Path
 from kivy.logger import Logger
 import yaml
+import psutil
 
 #utils function
 def is_raspberry_pi() -> bool:
@@ -160,6 +161,15 @@ class revPI() :
     #Set steps status
     def set_steps(self,active:bool) :
         self.rpi.io.use_steps.value = active
+
+    def get_cpu_load(self):
+        return psutil.cpu_percent()
+
+    def get_memory_usage(self):
+        return psutil.virtual_memory().percent
+
+    def get_cycle_time(self):
+        return self.rpi.cycletime
 
 if __name__ == '__main__':
     import sys, select, os

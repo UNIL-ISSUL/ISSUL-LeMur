@@ -1,0 +1,28 @@
+[INFO   ] [Logger      ] Record log in /home/jules/.kivy/logs/kivy_25-10-08_2.txt
+[INFO   ] [Kivy        ] v2.3.1
+[INFO   ] [Kivy        ] Installed at "/home/jules/.pyenv/versions/3.12.11/lib/python3.12/site-packages/kivy/__init__.py"
+[INFO   ] [Python      ] v3.12.11 (main, Jul 29 2025, 18:21:07) [GCC 13.3.0]
+[INFO   ] [Python      ] Interpreter at "/home/jules/.pyenv/versions/3.12.11/bin/python3"
+[INFO   ] [Logger      ] Purge log fired. Processing...
+[INFO   ] [Logger      ] Purge finished!
+[INFO   ] [Factory     ] 195 symbols loaded
+[INFO   ] [Image       ] Providers: img_tex, img_dds, img_sdl2 (img_pil, img_ffpyplayer ignored)
+[INFO   ] [Window      ] Provider: sdl2
+[INFO   ] [GL          ] Using the "OpenGL" graphics system
+[INFO   ] [GL          ] Backend used <sdl2>
+[INFO   ] [GL          ] OpenGL version <b'4.5 (Compatibility Profile) Mesa 24.2.8-1ubuntu1~24.04.1'>
+[INFO   ] [GL          ] OpenGL vendor <b'Mesa'>
+[INFO   ] [GL          ] OpenGL renderer <b'llvmpipe (LLVM 19.1.1, 256 bits)'>
+[INFO   ] [GL          ] OpenGL parsed version: 4, 5
+[INFO   ] [GL          ] Shading version <b'4.50'>
+[INFO   ] [GL          ] Texture max size <16384>
+[INFO   ] [GL          ] Texture max units <32>
+[INFO   ] [Window      ] auto add sdl2 input provider
+[INFO   ] [Window      ] virtual keyboard not allowed, single mode, not docked
+[INFO   ] [Text        ] Provider: sdl2
+ Traceback (most recent call last):
+   File "/app/main.py", line 26, in <module>
+     import hardware
+   File "/app/hardware.py", line 7, in <module>
+     import revpimodio2
+ ModuleNotFoundError: No module named 'revpimodio2'
