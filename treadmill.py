@@ -68,7 +68,6 @@ class TreadmillController:
 
     def __init__(self, hardware):
         self.hardware = hardware
-        self.reset_variables()
         self.test_name = "manual_test"
         self.subject_name = "sujet"
         # Event and log features
@@ -101,6 +100,7 @@ class TreadmillController:
         self.pv_history = collections.deque(maxlen=15)
         self.sp_history = collections.deque(maxlen=15)
         self.compensated_belt_speed_SP = 0
+        self.reset_variables()
 
     def _log_worker(self):
         """Worker thread for writing logs to file."""
@@ -216,6 +216,8 @@ class TreadmillController:
         self.treadmill_points = collections.deque(maxlen=16200) # 90 minutes of data at 3Hz
         self.event_list = []
         self.update_counter = 0
+        self.pv_history.clear()
+        self.sp_history.clear()
 
     def update(self):
         #update PV
@@ -242,29 +244,34 @@ class TreadmillController:
         self.vertical_speed_PV = compute_vertical_speed_mh(self.lift_angle_PV,self.belt_speed_PV)
 
         # Belt drift compensation
-        if self.is_running() and self.belt_speed_SP != 0:
+        if self.is_running():
             self.pv_history.append(self.belt_speed_PV)
             self.sp_history.append(self.belt_speed_SP)
+            #copy drift
             drift = self.drift
+            #compatation on ful array
             if len(self.pv_history) == self.pv_history.maxlen:
                 pv_array = np.array(self.pv_history)
                 sp_array = np.array(self.sp_history)
                 #self.pv_history.clear()
-
-                non_zero_sp_mask = pv_array != 0
-                if np.any(non_zero_sp_mask):
-                    ratios = sp_array[non_zero_sp_mask] / pv_array[non_zero_sp_mask]
+                #avoid divistion by 0
+                non_zero_mask = pv_array != 0
+                if np.any(non_zero_mask):
+                    ratios = sp_array[non_zero_mask] / pv_array[non_zero_mask]
                     ratios = ratios[np.isfinite(ratios)]
 
                     if ratios.size > 0:
                         mean_drift = np.median(ratios)
-                        drift = np.clip(mean_drift, self.min_drift, self.max_drift)
+                        #drift = np.clip(mean_drift, self.min_drift, self.max_drift)
                         #truncate 0.001
-                        drift = np.round(drift, 2)
+                        drift = np.round(mean_drift, 2)
             #update drift only if it changed to avoid unnecessary belt speed updates
             if drift != np.round(self.drift,2):
-                self.drift = self.drift + math.copysign(0.001,drift-1)
-                self.update_belt_speed()
+                #avoid drift update during acceleration by limiting drift update out of range
+                if drift >= self.min_drift and drift <= self.max_drift and drift!=1:
+                    self.drift = self.drift + math.copysign(0.001,drift-1)
+                    self.drift = max(self.min_drift, min(self.max_drift, self.drift))    #clip drift to range
+                    self.update_belt_speed()
 
             # Downsample data for the live graph (3Hz)
             self.update_counter += 1
@@ -395,7 +402,7 @@ class TreadmillController:
         self.compensated_belt_speed_SP = self.belt_speed_SP * self.drift
         if self.hardware:
             self.hardware.set_belt_speed(self.compensated_belt_speed_SP)
-        Logger.info(f"Treadmill: Updated belt speed SP to {self.belt_speed_SP}. With current drift of {self.drift:.2f}, compensated SP is {self.compensated_belt_speed_SP:.2f}")
+        Logger.info(f"Treadmill: Updated belt speed SP to {self.belt_speed_SP}. With current drift of {self.drift:.3f}, compensated SP is {self.compensated_belt_speed_SP:.2f}")
     
     def reverse_belt(self, direction):
         self.belt_direction = direction
