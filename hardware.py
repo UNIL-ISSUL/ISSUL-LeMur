@@ -152,8 +152,8 @@ class revPI() :
         return {
             "right": self.rpi.io.secu_right.value,
             "left": self.rpi.io.secu_left.value,
-            "front": self.rpi.io.secu_front.value,
-            "back": self.rpi.io.secu_back.value,
+            "top": self.rpi.io.secu_front.value or self.rpi.io.secu_front_back.value,
+            "bottom": self.rpi.io.secu_back.value or self.rpi.io.secu_front_back.value,
             "emergency": self.rpi.io.secu_emergency.value
         }
     
