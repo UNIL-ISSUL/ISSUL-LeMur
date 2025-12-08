@@ -238,6 +238,9 @@ class LeMurApp(App):
         #update treadmill status
         self.treadmill_status = self.treadmill.update()
         
+        #if top or bottom security active press stop button
+        if self.treadmill_status.safeties.top or self.treadmill_status.safeties.bottom :
+            self.root.ids.controller.ids.stop.state = 'down'
         
         if self.revpi :
             #modbus status
