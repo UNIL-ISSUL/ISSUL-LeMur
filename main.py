@@ -240,7 +240,7 @@ class LeMurApp(App):
         
         #if top or bottom security active press stop button
         if self.treadmill_status.safeties.top or self.treadmill_status.safeties.bottom :
-            self.root.ids.controller.ids.stop.state = 'down'
+            self.root.ids.controller.ids.pause.state = 'down'
         
         if self.revpi :
             #modbus status
