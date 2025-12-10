@@ -239,8 +239,13 @@ class LeMurApp(App):
         self.treadmill_status = self.treadmill.update()
         
         #if top or bottom security active press stop button
-        if self.treadmill_status.safeties.top or self.treadmill_status.safeties.bottom :
-            self.root.ids.controller.ids.pause.state = 'down'
+        if self.treadmill_status["safeties"]["top"] or self.treadmill_status["safeties"]["bottom"] :
+            #if treadmill is running toggle pause button to pause
+            if self.treadmill.is_running():
+                self.root.ids.controller.ids.start.state = 'normal'
+                self.root.ids.controller.ids.pause.state = 'down'
+                self.treadmill.pause()
+            #else treadmil is already stopped nothing to do
         
         if self.revpi :
             #modbus status
