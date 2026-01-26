@@ -402,7 +402,7 @@ class TreadmillController:
         self.compensated_belt_speed_SP = self.belt_speed_SP * self.drift
         if self.hardware:
             self.hardware.set_belt_speed(self.compensated_belt_speed_SP)
-        Logger.info(f"Treadmill: Updated belt speed SP to {self.belt_speed_SP}. With current drift of {self.drift:.3f}, compensated SP is {self.compensated_belt_speed_SP:.2f}")
+        #Logger.info(f"Treadmill: Updated belt speed SP to {self.belt_speed_SP}. With current drift of {self.drift:.3f}, compensated SP is {self.compensated_belt_speed_SP:.2f}")
     
     def reverse_belt(self, direction):
         self.belt_direction = direction
