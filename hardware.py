@@ -73,7 +73,7 @@ class revPI() :
         print("MAIN LOOP IS ON")
     
     #stop lift and belt
-    def stop_all(self) :
+    def stop_all(self, ctd=None) : #L'argument ctd (CycleTimeData) est envoyé par revpimodio2 event
         #stop lift
         self.stop_lift("exit program")
         #stop belt
