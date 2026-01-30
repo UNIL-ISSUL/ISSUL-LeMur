@@ -148,15 +148,19 @@ class IncrementalWidget(BoxLayout):
                     grid.remove_widget(widget)
                 self.points.remove(row)
 
-            def on_change(instance, value):
-                # Update the row with the new value
-                self.recalculate(row)
-                # Recalculate the graph after any change
-                self.update_graph()
-                #Clock.schedule_once(lambda dt:self.update_graph(),0.2)
+            def trigger_update(instance, value=None):
+                # value est False quand on perd le focus (Tab ou clic)
+                # value est None quand on appelle via Entrée
+                if value is False or value is None:
+                    self.recalculate(row)
+                    self.update_graph()
 
             for widget in [ti_time, ti_incl, ti_speed, ti_asc]:
-                widget.bind(text=on_change)
+                # Déclenchement quand on quitte la case (grâce à votre handle_tab)
+                widget.bind(focus=trigger_update)
+                
+                # Déclenchement quand on appuie sur ENTRÉE
+                widget.bind(on_text_validate=lambda x: trigger_update(x, None))
 
             btn.bind(on_press=remove_row)
 
@@ -174,10 +178,23 @@ class IncrementalWidget(BoxLayout):
             return
         
         #Si un champ est déjà calculé on remplace le texte par -
+        #for field in ['speed', 'incl', 'asc']:
+        #    if row[field].readonly and parse(row[field]) >= 0:
+        #        row[field].readonly = False
+        #        row[field].text = '-1'
+                
+        # Si un champ est déjà calculé (readonly), on le réinitialise à -1
+        # ET on met à jour la variable locale correspondante pour forcer le recalcul
         for field in ['speed', 'incl', 'asc']:
             if row[field].readonly and parse(row[field]) >= 0:
                 row[field].readonly = False
                 row[field].text = '-1'
+                
+                # Mise à jour des variables locales pour la suite du calcul
+                if field == 'speed': v = -1.0
+                if field == 'incl': i = -1.0
+                if field == 'asc': a = -1.0
+        # ----------------------
 
         # Si champ marqué 'nc', alors le calculer, verrouiller et griser
         if a < 0 and v is not None and i is not None:

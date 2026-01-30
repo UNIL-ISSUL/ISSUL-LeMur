@@ -240,6 +240,8 @@ class TreadmillController:
                 self.belt_speed_PV = add_noise(self.belt_speed_PV)
             else:
                 self.belt_speed_PV = 0
+            #unlock safeties
+            self.safeties = {"top": False,"bottom": False,"left": False,"right": False,"emergency": False } 
         #compute vertical speed
         self.vertical_speed_PV = compute_vertical_speed_mh(self.lift_angle_PV,self.belt_speed_PV)
 
