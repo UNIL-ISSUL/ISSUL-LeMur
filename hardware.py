@@ -8,6 +8,7 @@ import revpimodio2
 from pathlib import Path
 from kivy.logger import Logger
 import yaml
+import time
 
 #utils function
 def is_raspberry_pi() -> bool:
@@ -111,6 +112,18 @@ class revPI() :
 
     #start belt and display a msg from user
     def start_belt(self,msg=None) :
+        # Check belt_stop (should be True/High for Run Permitted)
+        if not self.rpi.io.belt_stop.value:
+            Logger.warning("Belt stop bit was stuck Low (Stop Active). Resetting to High.")
+            self.rpi.io.belt_stop.value = True
+            time.sleep(0.12)
+
+        # Check belt_start (should be False/Low before we pulse it High)
+        if self.rpi.io.belt_start.value:
+            Logger.warning("Belt start bit was stuck High. Resetting.")
+            self.rpi.io.belt_start.value = False
+            time.sleep(0.12)
+
         run = True
         self.rpi.io.belt_start.value = True
         #self.rpi.io.belt_stop.value = not run
