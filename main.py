@@ -459,6 +459,52 @@ class LeMurApp(App):
                 self.manual_widget_ids.tilt.auto_update = True #force auto update on tilt ! compute speed based on real time speed
                 self.vertical_speed_mode = 2
             Logger.info("UI : Mode changed : "+instance.text)
+
+    def reset_hardware(self):
+        Logger.info("Main: Resetting hardware...")
+        # Shutdown existing treadmill logic/hardware
+        if self.treadmill:
+            self.treadmill.shutdown()
+
+        # Cleanup the hardware interface if it exists
+        # Assuming self.revpi was assigned in __init__ or build from main execution logic
+        # But looking at __main__ block, self.revpi is passed via self.treadmill.hardware?
+        # Let's check how self.revpi is used. In build() we see `self.revpi` used,
+        # but in __init__ it is set to None.
+        # Actually in __main__, revpi is created and passed to TreadmillController.
+        # So we need to access it from self.treadmill.hardware
+
+        if self.treadmill.hardware:
+            try:
+                self.treadmill.hardware.cleanup()
+            except Exception as e:
+                Logger.error(f"Main: Error during hardware cleanup: {e}")
+            self.treadmill.hardware = None
+
+        # Re-instantiate hardware
+        new_revpi = None
+        if hardware.is_raspberry_pi():
+            try:
+                new_revpi = hardware.revPI()
+                Logger.info("Main: Hardware re-initialized.")
+            except Exception as e:
+                Logger.error(f"Main: Failed to re-initialize hardware: {e}")
+        else:
+             Logger.info("Main: Reset simulated (PC mode).")
+
+        # Re-assign to treadmill controller
+        self.treadmill.hardware = new_revpi
+        # Also update local reference if used for modbus status in update_values
+        self.revpi = new_revpi
+
+        # Reset treadmill variables
+        self.treadmill.reset_variables()
+
+        # Re-apply targets if needed, or let them stay at 0
+        self.treadmill.set_lift_angle(self.tilt_target)
+        self.treadmill.set_belt_speed(0) # Safety: start at 0
+
+        Logger.info("Main: Hardware reset complete.")
  
 if __name__ == '__main__':
     if hardware.is_raspberry_pi() : 
@@ -468,5 +514,9 @@ if __name__ == '__main__':
     else :
         Logger.info("Main.py : Execute on a PC")
         revpi = None
-    treadmill = treadmill.TreadmillController(revpi)
-    LeMurApp(treadmill).run()
+    treadmill_instance = treadmill.TreadmillController(revpi)
+    app = LeMurApp(treadmill_instance)
+    # Store initial revpi ref in app if needed, though app.__init__ sets self.revpi = None
+    if revpi:
+        app.revpi = revpi
+    app.run()

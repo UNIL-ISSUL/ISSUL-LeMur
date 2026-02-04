@@ -175,6 +175,11 @@
         group : 'controller'
         on_press : app.stop(self)
         font_size : root.font_size
+    Button :
+        text : 'Reset Hardware'
+        on_press : app.reset_hardware()
+        font_size : root.font_size * 0.7
+        size_hint_y : 0.5
 
 <Status@BoxLayout> :
     orientation : 'horizontal'
