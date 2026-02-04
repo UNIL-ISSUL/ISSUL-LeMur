@@ -61,8 +61,8 @@ class revPI() :
         self.enable_pid(0,True)      
 
         #set event to create latch function on belt-start and belt_stop
-        self.rpi.io.belt_start.reg_timerevent(self.latch_output, 100,edge=revpimodio2.RISING,as_thread=False)    #start is trigger to 0 after 100ms
-        self.rpi.io.belt_stop.reg_timerevent(self.latch_output, 100,edge=revpimodio2.FALLING,as_thread=False)    #stop is trigger to 1 after 100ms
+        self.rpi.io.belt_start.reg_timerevent(self.latch_output, 200,edge=revpimodio2.RISING,as_thread=False)    #start is trigger to 0 after 100ms
+        self.rpi.io.belt_stop.reg_timerevent(self.latch_output, 200,edge=revpimodio2.FALLING,as_thread=False)    #stop is trigger to 1 after 100ms
         #set event to handle safety input
         #self.rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
         #close the program properly
