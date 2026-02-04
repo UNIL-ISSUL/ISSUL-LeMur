@@ -8,7 +8,7 @@ import revpimodio2
 from pathlib import Path
 from kivy.logger import Logger
 import yaml
-import time
+import threading
 
 #utils function
 def is_raspberry_pi() -> bool:
@@ -47,6 +47,8 @@ class revPI() :
         self.rpi = revpimodio2.RevPiModIO(autorefresh=True)
         self.rpi.cycletime = config['CYCLETIME_MS']
         
+        self.start_timer = None
+
         #set belt default value
         self.rpi.io.belt_stop.value=True
         self.rpi.io.belt_start.value=False
@@ -112,26 +114,43 @@ class revPI() :
 
     #start belt and display a msg from user
     def start_belt(self,msg=None) :
+        # Cancel any pending start
+        if self.start_timer:
+            self.start_timer.cancel()
+            self.start_timer = None
+
+        reset_needed = False
+
         # Check belt_stop (should be True/High for Run Permitted)
         if not self.rpi.io.belt_stop.value:
-            Logger.warning("Belt stop bit was stuck Low (Stop Active). Resetting to High.")
+            Logger.warning("Belt stop stuck Low (Active). Resetting to High.")
             self.rpi.io.belt_stop.value = True
-            time.sleep(0.12)
+            reset_needed = True
 
-        # Check belt_start (should be False/Low before we pulse it High)
+        # Check belt_start (should be False/Low)
         if self.rpi.io.belt_start.value:
-            Logger.warning("Belt start bit was stuck High. Resetting.")
+            Logger.warning("Belt start stuck High. Resetting to Low.")
             self.rpi.io.belt_start.value = False
-            time.sleep(0.12)
+            reset_needed = True
 
-        run = True
+        if reset_needed:
+            # Schedule start in next cycles (150ms > 100ms cycle)
+            self.start_timer = threading.Timer(0.15, self._send_start_pulse, args=[msg])
+            self.start_timer.start()
+        else:
+            self._send_start_pulse(msg)
+
+    def _send_start_pulse(self, msg):
         self.rpi.io.belt_start.value = True
-        #self.rpi.io.belt_stop.value = not run
-        #display status, if there is no msg do not display reason
         Logger.info(f"Belt started{f', reason : {msg}' if msg else ''}")
+        self.start_timer = None
 
     #stop belt and display a msg from user
     def stop_belt(self,msg=None) :
+        if self.start_timer:
+            self.start_timer.cancel()
+            self.start_timer = None
+
         stop = True
         self.rpi.io.belt_stop.value = False
         #self.rpi.io.belt_start.value = not stop
@@ -214,4 +233,3 @@ if __name__ == '__main__':
     #plt.show()
     #response = np.array([t,h])
     #np.savetxt('response.txt',np.column_stack((t,h)),delimiter=',')
-
