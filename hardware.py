@@ -8,6 +8,7 @@ import revpimodio2
 from pathlib import Path
 from kivy.logger import Logger
 import yaml
+import threading
 
 #utils function
 def is_raspberry_pi() -> bool:
@@ -46,6 +47,8 @@ class revPI() :
         self.rpi = revpimodio2.RevPiModIO(autorefresh=True)
         self.rpi.cycletime = config['CYCLETIME_MS']
         
+        self.start_timer = None
+
         #set belt default value
         self.rpi.io.belt_stop.value=True
         self.rpi.io.belt_start.value=False
@@ -60,10 +63,10 @@ class revPI() :
         self.enable_pid(0,True)      
 
         #set event to create latch function on belt-start and belt_stop
-        self.rpi.io.belt_start.reg_timerevent(self.latch_output, 100,edge=revpimodio2.RISING,as_thread=False)    #start is trigger to 0 after 100ms
-        self.rpi.io.belt_stop.reg_timerevent(self.latch_output, 100,edge=revpimodio2.FALLING,as_thread=False)    #stop is trigger to 1 after 100ms
+        self.rpi.io.belt_start.reg_timerevent(self.latch_output, 200,edge=revpimodio2.RISING,as_thread=False)    #start is trigger to 0 after 100ms
+        self.rpi.io.belt_stop.reg_timerevent(self.latch_output, 200,edge=revpimodio2.FALLING,as_thread=False)    #stop is trigger to 1 after 100ms
         #set event to handle safety input
-        self.rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
+        #self.rpi.io.lift_safety.reg_event(self.stop_all,edge=revpimodio2.FALLING,as_thread=True)
         #close the program properly
         self.rpi.handlesignalend(cleanupfunc=self.stop_all)
 
@@ -73,7 +76,7 @@ class revPI() :
         print("MAIN LOOP IS ON")
     
     #stop lift and belt
-    def stop_all(self) :
+    def stop_all(self, ctd=None) : #L'argument ctd (CycleTimeData) est envoyé par revpimodio2 event
         #stop lift
         self.stop_lift("exit program")
         #stop belt
@@ -111,14 +114,43 @@ class revPI() :
 
     #start belt and display a msg from user
     def start_belt(self,msg=None) :
-        run = True
+        # Cancel any pending start
+        if self.start_timer:
+            self.start_timer.cancel()
+            self.start_timer = None
+
+        reset_needed = False
+
+        # Check belt_stop (should be True/High for Run Permitted)
+        if not self.rpi.io.belt_stop.value:
+            Logger.warning("Belt stop stuck Low (Active). Resetting to High.")
+            self.rpi.io.belt_stop.value = True
+            reset_needed = True
+
+        # Check belt_start (should be False/Low)
+        if self.rpi.io.belt_start.value:
+            Logger.warning("Belt start stuck High. Resetting to Low.")
+            self.rpi.io.belt_start.value = False
+            reset_needed = True
+
+        if reset_needed:
+            # Schedule start in next cycles (150ms > 100ms cycle)
+            self.start_timer = threading.Timer(0.15, self._send_start_pulse, args=[msg])
+            self.start_timer.start()
+        else:
+            self._send_start_pulse(msg)
+
+    def _send_start_pulse(self, msg):
         self.rpi.io.belt_start.value = True
-        #self.rpi.io.belt_stop.value = not run
-        #display status, if there is no msg do not display reason
         Logger.info(f"Belt started{f', reason : {msg}' if msg else ''}")
+        self.start_timer = None
 
     #stop belt and display a msg from user
     def stop_belt(self,msg=None) :
+        if self.start_timer:
+            self.start_timer.cancel()
+            self.start_timer = None
+
         stop = True
         self.rpi.io.belt_stop.value = False
         #self.rpi.io.belt_start.value = not stop
@@ -152,8 +184,8 @@ class revPI() :
         return {
             "right": self.rpi.io.secu_right.value,
             "left": self.rpi.io.secu_left.value,
-            "front": self.rpi.io.secu_front.value,
-            "back": self.rpi.io.secu_back.value,
+            "top": self.rpi.io.secu_front.value or self.rpi.io.secu_front_back.value,
+            "bottom": self.rpi.io.secu_back.value or self.rpi.io.secu_front_back.value,
             "emergency": self.rpi.io.secu_emergency.value
         }
     
@@ -201,4 +233,3 @@ if __name__ == '__main__':
     #plt.show()
     #response = np.array([t,h])
     #np.savetxt('response.txt',np.column_stack((t,h)),delimiter=',')
-

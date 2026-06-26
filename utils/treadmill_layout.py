@@ -36,18 +36,18 @@ class TreadmillLayout(StackLayout):
             self.emergency_stop_widget.append(SecurityToggleButton(size_hint=(0.15,0.15),
                                                            text='STOP',
                                                            font_size=self.font_size,
-                                                           state='down',
+                                                           state='normal',
                                                            on_press=self._update))
         self.top_widget = SecurityToggleButton(size_hint=(0.7,0.15),
                                        text= 'SÉCURITÉ AVANT',
                                        font_size=self.font_size,
-                                       state='down',
+                                       state='normal',
                                        on_press=self._update)
         self.left_widget = SecurityToggleButton(size_hint=(0.15,0.7),
                                         text = make_vertical_text('SÉCURITÉ GAUCHE'),
                                         font_size=self.font_size,
                                         halign='center',
-                                        state='down',
+                                        state='normal',
                                         on_press=self._update)
         self.center_widget = ToggleButton(size_hint=(0.7,0.7),
                                           text='ESCALIER' if self.mode_belt else 'BANDE',
@@ -59,12 +59,12 @@ class TreadmillLayout(StackLayout):
                                          text=make_vertical_text('SÉCURITÉ DROITE'),
                                          font_size=self.font_size,
                                          halign='center',
-                                         state='down',
+                                         state='normal',
                                          on_press=self._update)
         self.bottom_widget = SecurityToggleButton(size_hint=(0.7,0.15),
                                           text='SÉCURITÉ ARRIÈRE',
                                           font_size=self.font_size,
-                                          state='down',
+                                          state='normal',
                                           on_press=self._update)
         #add widgets
         self.add_widget(self.emergency_stop_widget[0])
