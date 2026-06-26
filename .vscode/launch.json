@@ -10,9 +10,17 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "env": {
-                "DISPLAY": ":0.0"
-            }
+            "justMyCode": true,
+            "pythonPath": "C:\\Users\\pret_helpdesk\\miniconda3\\python.exe"
+        },
+        {
+            "name": "Python: main.py",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "pythonPath": "C:\\Users\\pret_helpdesk\\miniconda3\\python.exe"
         }
     ]
 }

@@ -236,8 +236,8 @@
         on_target : app.update_targets(tilt)
         name : 'Inclinaison'
         unit : '°'
-        min_value : 1   #limité par le l'axe des poulies des courroies
-        max_value : 40  #limité par le l'axe des poulies des courroies
+        min_value : 0   #limité par le l'axe des poulies des courroies
+        max_value : 80  #limité par le l'axe des poulies des courroies
         auto_update : False
     
     NumericInput :
@@ -248,7 +248,7 @@
         name : app.speed_text
         unit : 'km/h'
         min_value : 0
-        max_value : 15
+        max_value : 5
         auto_update : True
 
     NumericInput :
@@ -260,7 +260,7 @@
         name : 'Vitesse verticale'
         unit : 'm/h'
         min_value : 100
-        max_value : 3500
+        max_value : 3000
         auto_update : True
         increment_list : [10, 50, 100]
 
