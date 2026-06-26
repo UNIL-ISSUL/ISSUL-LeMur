@@ -82,8 +82,20 @@ class TreadmillController:
 
     def __init__(self, hardware):
         self.hardware = hardware
+        
+        # Load configuration first
+        config_path = Path(__file__).parent / 'treadmill.yaml'
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f)
+        else:
+            config = {}
+        
+        # Initialize history deques before reset_variables() call
+        self.pv_history = collections.deque(maxlen=9)
+        self.sp_history = collections.deque(maxlen=9)
         self.reset_variables()
-        self.belt_acc = config['BELT_ACC']
+        self.belt_acc = config.get('BELT_ACC', 0)
         self.current_speed_command = 0
         self.test_name = "manual_test"
         self.subject_name = "sujet"
@@ -102,20 +114,12 @@ class TreadmillController:
         self.log_thread = None
         self.stop_logging_thread = threading.Event()
         # Belt drift compensation
-        config_path = Path(__file__).parent / 'treadmill.yaml'
-        if config_path.exists():
-            with open(config_path, 'r') as f:
-                config = yaml.safe_load(f)
-                max_drift_pct = config['max_drift_pct']
-        else:
-            max_drift_pct = 10
+        max_drift_pct = config.get('max_drift_pct', 10)
 
         self.min_drift = 1.0 - (max_drift_pct / 100.0)
         self.max_drift = 1.0 + (max_drift_pct / 100.0)
 
         self.drift = 1.0
-        self.pv_history = collections.deque(maxlen=9)
-        self.sp_history = collections.deque(maxlen=9)
         self.compensated_belt_speed_SP = 0
         self.reset_variables()
 
