@@ -157,7 +157,7 @@ class LeMurApp(App):
     revpi = None
     treadmill_status = ObjectProperty(None) 
     #UI properties
-    belt_speed_target = NumericProperty(2.5)
+    belt_speed_target = NumericProperty(1)
     tilt_target = NumericProperty(27.5)
     vertical_speed_target = NumericProperty(1000)
     #vertical_speed_control

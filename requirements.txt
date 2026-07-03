@@ -1,4 +1,6 @@
 kivy
 kivy-garden
+kivy_garden.graph
 PyYAML
 numpy
+revpimodio2
