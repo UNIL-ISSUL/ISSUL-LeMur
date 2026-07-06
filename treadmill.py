@@ -68,6 +68,7 @@ class TreadmillController:
     belt_speed_PV = 0
     vertical_speed_PV = 0
     belt_direction = True
+    steps_active = False
     safeties = {
         "top": True,
         "bottom": True,
@@ -90,6 +91,11 @@ class TreadmillController:
                 config = yaml.safe_load(f)
         else:
             config = {}
+        
+        self.default_surface = config.get('default_surface', 'belt')
+        self.steps_active = (self.default_surface == 'steps-bars')
+        if self.hardware and hasattr(self.hardware, 'set_steps'):
+            self.hardware.set_steps(self.steps_active)
         
         # Initialize history deques before reset_variables() call
         self.pv_history = collections.deque(maxlen=9)
@@ -388,7 +394,8 @@ class TreadmillController:
             "elevation_pos_m": self.elevation_pos_m,
             "elevation_neg_m": self.elevation_neg_m,
             "elapsed_time": self.elapsed_time,
-            "belt_direction": self.belt_direction
+            "belt_direction": self.belt_direction,
+            "steps_active": self.steps_active
         }
 
     def start(self, test_name="manual_test", subject_name="sujet"):
@@ -458,6 +465,12 @@ class TreadmillController:
         if self.hardware:
             self.hardware.set_belt_direction(direction)
         Logger.info(f"Treadmill: Set belt direction to {'forward' if direction else 'backward'}")
+
+    def set_surface(self, is_steps):
+        self.steps_active = is_steps
+        if self.hardware and hasattr(self.hardware, 'set_steps'):
+            self.hardware.set_steps(is_steps)
+        Logger.info(f"Treadmill: Set surface to {'steps-bars' if is_steps else 'belt'}")
 
     #All get functions return the current setpoint or process variable if there is no treadmill attached
     #Caution to self.update() before calling getter

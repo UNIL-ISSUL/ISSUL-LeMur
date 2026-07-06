@@ -264,34 +264,6 @@
         auto_update : True
         increment_list : [10, 50, 100]
 
-    BoxLayout : 
-        orientation : 'horizontal'
-        canvas.before:
-            Color:
-                rgba: (204/255, 82/255, 0/255,1) if app.steps_active else (0, 0, 0, 1)
-            Rectangle:
-                pos: self.pos
-                size: self.size
-
-        height : '60dp' 
-        size_hint_y : None
-        spacing : 10
-        padding : [0,10]
-
-        Label :
-            text : 'Surface de marche'
-            font_size : 24
-        ToggleButton :
-            allow_no_selection : False
-            text : 'Bande'
-            group : 'steps'
-            state : 'down'
-            on_press : app.toggle_steps(False)
-        ToggleButton :
-            allow_no_selection : False
-            text : 'Escaliers'
-            group : 'steps'
-            on_press : app.toggle_steps(True)
 
 <MainScreenManager>:
     id: screen_manager
@@ -369,6 +341,13 @@ BoxLayout :
         Button :
             text : 'Change direction'
             on_press : app.show_reverse_popup()
+            font_size : self.font_size
+            height : '40dp'
+            size_hint_y : None
+
+        Button :
+            text : 'Choose surface'
+            on_press : app.show_surface_popup()
             font_size : self.font_size
             height : '40dp'
             size_hint_y : None

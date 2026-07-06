@@ -1,2 +1,3 @@
 BELT_ACC: 1.0 #acceleration in kmh/s
 max_drift_pct: 20
+default_surface: "steps-bars" #"belt" # belt or steps-bars

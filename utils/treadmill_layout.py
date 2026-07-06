@@ -50,7 +50,7 @@ class TreadmillLayout(StackLayout):
                                         state='normal',
                                         on_press=self._update)
         self.center_widget = ToggleButton(size_hint=(0.7,0.7),
-                                          text='ESCALIER' if self.mode_belt else 'BANDE',
+                                          text='STEPS-BARS' if self.mode_belt else 'BELT',
                                           font_size=self.font_size,
                                           halign='center',
                                           state='down',
@@ -84,7 +84,7 @@ class TreadmillLayout(StackLayout):
         self.left_widget.state = bool2state(self.safeties.get('left', True))
         self.center_widget.state = bool2state(self.mode_belt)
         direction_text = "Forward" if self.belt_direction else "Backward"
-        mode_text = 'ESCALIER' if self.mode_belt else 'BANDE'
+        mode_text = 'STEPS-BARS' if self.mode_belt else 'BELT'
         self.center_widget.text = f"{mode_text}\n{direction_text}"
         self.right_widget.state = bool2state(self.safeties.get('right', True))
         self.bottom_widget.state = bool2state(self.safeties.get('bottom', True))

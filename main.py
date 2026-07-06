@@ -181,6 +181,10 @@ class LeMurApp(App):
     def __init__(self, treadmill, **kwargs):
         super(LeMurApp,self).__init__(**kwargs)
         self.treadmill = treadmill
+
+        self.steps_active = treadmill.steps_active
+        self.speed_text = "Vitesse marches" if self.steps_active else "Vitesse bande"
+
         self.treadmill_status = treadmill.update()
 
     def build(self):
@@ -209,22 +213,11 @@ class LeMurApp(App):
         Logger.info("Main : belt speed target updated " + str(self.belt_speed_target))
         self.treadmill.set_belt_speed(self.belt_speed_target)
     
-    def toggle_steps(self,active) :
-        color = [0, 0, 0]
-        self.steps_background_color = [0, 0, 0,1]
-        self.speed_text = "Vitesse bande"
-        if active :
-            color = [204/255, 82/255, 0/255]
-            self.steps_background_color = [204/255, 82/255, 0/255,1]
-            self.speed_text = "Vitesse marches"
-
-        #update belt speed according to new status
-        self.steps_active = active
-
-        #change background color
-        #with self.root.ids['steps_grid'].canvas.before:
-        #    Color(color[0], color[1], color[2], 1)
-        #    Rectangle(pos=self.root.ids['steps_grid'].pos, size=self.root.ids['steps_grid'].size)
+    def set_surface(self, is_steps):
+        self.steps_active = is_steps
+        self.speed_text = "Vitesse marches" if is_steps else "Vitesse bande"
+        self.treadmill.set_surface(is_steps)
+        Logger.info(f"Main: Selected surface: {'steps-bars' if is_steps else 'belt'}")
     
     def update_values(self,_) :
         #update incremental widget graph and setpoints if on incremental tab and treadmill is running
@@ -237,6 +230,7 @@ class LeMurApp(App):
 
         #update treadmill status
         self.treadmill_status = self.treadmill.update()
+        self.steps_active = self.treadmill_status.get("steps_active", False)
         
         #if top or bottom security active press stop button
         if self.treadmill_status["safeties"]["top"] or self.treadmill_status["safeties"]["bottom"] :
@@ -246,12 +240,6 @@ class LeMurApp(App):
                 self.root.ids.controller.ids.pause.state = 'down'
                 self.treadmill.pause()
             #else treadmil is already stopped nothing to do
-        
-        if self.revpi :
-            #modbus status
-            self.revpi.set_steps(self.steps_active)   #send steps status to modbus
-            #copy encoder feedback to VFD PID disable (inverted logic) pin
-            self.revpi.rpi.io.belt_pid_enable.value = self.revpi.rpi.io.encoder_feedback.value
 
     def start(self, instance) :
         test_name = "manual_test"
@@ -349,6 +337,28 @@ class LeMurApp(App):
 
     def set_reverse(self, direction):
         self.treadmill.reverse_belt(direction)
+
+    def show_surface_popup(self):
+        content = BoxLayout(orientation='vertical', spacing=10)
+        popup_label = Label(text='Choose surface')
+        belt_button = Button(text='Belt')
+        steps_button = Button(text='Steps-bars')
+        content.add_widget(popup_label)
+        content.add_widget(belt_button)
+        content.add_widget(steps_button)
+
+        popup = Popup(title='Surface de marche',
+                      content=content,
+                      size_hint=(None, None), size=(600, 400))
+
+        def set_surface_and_dismiss(is_steps):
+            self.set_surface(is_steps)
+            popup.dismiss()
+
+        belt_button.bind(on_press=lambda *args: set_surface_and_dismiss(False))
+        steps_button.bind(on_press=lambda *args: set_surface_and_dismiss(True))
+
+        popup.open()
 
     def update_targets(self,instance,manual=False) :
         if self.vertical_speed_mode == 0 :  #vertical speed in manual mode
