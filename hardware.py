@@ -160,7 +160,7 @@ class revPI() :
     def set_belt_speed(self,V_kmh) :
         #compute frequency in Hz to sent to VFD
         value = V_kmh * config['BELT_MAX_FREQUENCY_HZ'] * 100 / config['BELT_MAX_SPEED_KMH']  # *100 because belt is sent as int with 2 precision digits
-        value = value /4 #new gearbox ratio 4:1
+        value = value * 4 #new gearbox ratio 4:1
         value = round(config['BELT_KMH2HZ_factor'] * value) #rounded to nearest int and calibrated
         #split and apply value
         self.rpi.io.belt_speed_SP_0.value, self.rpi.io.belt_speed_SP_1.value = split_value(value)
