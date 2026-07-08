@@ -13,86 +13,103 @@ if not os.path.exists(config_path):
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
-L = config['BELT_LENGTH_MM']  # 2620 mm
-h = config['BELT_HEIGHT_MM']  # 185 mm
-R = config['RADIUS_CYL_MM']    # 93 mm
+L = config['LONGERON_LENGTH_MM']    # 2620 mm (longeron length)
+h = config['LONGERON_HEIGHT_MM']    # 185 mm (longeron height)
+D_wheel = config['REAR_WHEEL_DIAMETER_MM'] # 125 mm (rear wheel diameter)
+R = D_wheel / 2.0                   # 62.5 mm (rear wheel radius)
 
 print(f"Geometry parameters loaded:")
-print(f"  L (Belt Length) = {L} mm")
-print(f"  h (Belt Height / rear roller to wheel axis vertical distance) = {h} mm")
-print(f"  R (Wheel Radius) = {R} mm")
+print(f"  Longeron Length (L) = {L} mm")
+print(f"  Longeron Height (h) = {h} mm")
+print(f"  Rear Wheel Diameter = {D_wheel} mm (Radius R = {R} mm)")
 
-# 1. Direct Kinematics: H(alpha)
-# H(alpha) = L * sin(alpha) + h * cos(alpha) + R
-def direct_kinematics(alpha_deg):
+# 1. Direct Kinematics on flat ground: H_flat(alpha)
+# H_flat(alpha) = L * sin(alpha) + h * cos(alpha) + R
+def direct_kinematics_flat(alpha_deg):
     alpha_rad = np.radians(alpha_deg)
     return L * np.sin(alpha_rad) + h * np.cos(alpha_rad) + R
 
-# 2. Inverse Kinematics: alpha(H)
+# 2. Inverse Kinematics on flat ground: alpha_flat(H)
 # alpha(H) = arcsin((H - R) / sqrt(L^2 + h^2)) - atan2(h, L)
-def inverse_kinematics(H):
+def inverse_kinematics_flat(H):
     denom = np.sqrt(L**2 + h**2)
     val = (H - R) / denom
-    # Clip val to [-1, 1] to avoid math domain errors
     val = np.clip(val, -1.0, 1.0)
     alpha_rad = np.arcsin(val) - np.arctan2(h, L)
     return np.degrees(alpha_rad)
 
-# 3. Ground profile for linearization
-# We want the relationship between alpha and H to be linear:
-# H_linear(alpha) = H_0 + k * alpha
-# where H_0 = h + R
-alpha_max_deg = 70.0
-alpha_max_rad = np.radians(alpha_max_deg)
-H_0 = h + R
-H_max = direct_kinematics(alpha_max_deg)
-k = (H_max - H_0) / alpha_max_rad
-
-def ground_profile(alpha_deg):
+# 3. Direct Kinematics with ground profile to prevent height decrease
+# We choose a transition angle alpha_0 (e.g., 80 degrees)
+# For alpha <= alpha_0: H(alpha) = H_flat(alpha)
+# For alpha > alpha_0: H(alpha) = H_flat(alpha_0) + H_flat'(alpha_0) * (alpha - alpha_0)
+# where H_flat'(alpha) = L * cos(alpha) - h * sin(alpha)
+def direct_kinematics_profile(alpha_deg, alpha_0_deg=80.0):
     alpha_rad = np.radians(alpha_deg)
-    # Required H_linear(alpha)
-    H_linear = H_0 + k * alpha_rad
-    # Real H without ground profile
+    alpha_0_rad = np.radians(alpha_0_deg)
+    
     H_flat = L * np.sin(alpha_rad) + h * np.cos(alpha_rad) + R
-    # y_ground is the difference between H_linear and H_flat
-    y_ground = H_linear - H_flat
-    # x coordinate of the wheel axis relative to its position at alpha=0
-    # x_w(alpha) = -L * cos(alpha) + h * sin(alpha)
-    # x_profile(alpha) = x_w(alpha) - x_w(0) = L*(1 - cos(alpha)) + h * sin(alpha)
+    
+    # Calculate flat properties at transition angle
+    H_0_flat = L * np.sin(alpha_0_rad) + h * np.cos(alpha_0_rad) + R
+    slope_0 = L * np.cos(alpha_0_rad) - h * np.sin(alpha_0_rad)
+    
+    # For arrays or single values
+    if isinstance(alpha_deg, np.ndarray):
+        H = np.where(alpha_deg <= alpha_0_deg, 
+                     H_flat, 
+                     H_0_flat + slope_0 * (alpha_rad - alpha_0_rad))
+    else:
+        H = H_flat if alpha_deg <= alpha_0_deg else H_0_flat + slope_0 * (alpha_rad - alpha_0_rad)
+        
+    return H
+
+# Calculate ground profile height y_ground and coordinate x
+# y_ground = H_target - H_flat
+# x_profile = L * (1 - cos(alpha)) + h * sin(alpha)
+def compute_profile(alpha_deg, alpha_0_deg=80.0):
+    alpha_rad = np.radians(alpha_deg)
+    H_target = direct_kinematics_profile(alpha_deg, alpha_0_deg)
+    H_flat = L * np.sin(alpha_rad) + h * np.cos(alpha_rad) + R
+    y_ground = H_target - H_flat
     x_profile = L * (1.0 - np.cos(alpha_rad)) + h * np.sin(alpha_rad)
     return x_profile, y_ground
 
-# Generate data points
-alpha_vals = np.linspace(0, 70, 500)
-H_vals = direct_kinematics(alpha_vals)
+# Generate data points up to 90 degrees
+alpha_vals = np.linspace(0, 90, 500)
+H_flat_vals = direct_kinematics_flat(alpha_vals)
 
-x_profile_vals = []
-y_ground_vals = []
-for a in alpha_vals:
-    x_p, y_g = ground_profile(a)
-    x_profile_vals.append(x_p)
-    y_ground_vals.append(y_g)
+# Compute for transition angles: 75, 80, 85 degrees
+transitions = [75.0, 80.0, 85.0]
+results = {}
 
-x_profile_vals = np.array(x_profile_vals)
-y_ground_vals = np.array(y_ground_vals)
+for t_ang in transitions:
+    H_p = direct_kinematics_profile(alpha_vals, t_ang)
+    x_p, y_g = compute_profile(alpha_vals, t_ang)
+    results[t_ang] = {
+        'H': H_p,
+        'x': x_p,
+        'y_ground': y_g
+    }
 
-# Create a DataFrame
+# Create a DataFrame for transition angle = 80 degrees
 df = pd.DataFrame({
     'Alpha_deg': alpha_vals,
-    'H_direct_mm': H_vals,
-    'X_profile_mm': x_profile_vals,
-    'Y_ground_mm': y_ground_vals
+    'H_flat_mm': H_flat_vals,
+    'H_profile_80deg_mm': results[80.0]['H'],
+    'X_profile_80deg_mm': results[80.0]['x'],
+    'Y_ground_80deg_mm': results[80.0]['y_ground']
 })
-
 df.to_csv('lift_kinematics_data.csv', index=False)
 print("Saved data to lift_kinematics_data.csv")
 
 # Plotting
 # Plot 1: Direct Kinematics H(alpha)
 plt.figure(figsize=(10, 6))
-plt.plot(alpha_vals, H_vals, 'b-', linewidth=2, label='Actual $H(\\alpha)$ (Flat Ground)')
-plt.plot(alpha_vals, H_0 + k * np.radians(alpha_vals), 'r--', linewidth=1.5, label='Linearized Target $H_{linear}(\\alpha)$')
-plt.title('Direct Kinematics of Lift: Pivot Height vs Inclination Angle')
+plt.plot(alpha_vals, H_flat_vals, 'k--', linewidth=1.5, label='Flat Ground (height decreases at end)')
+for t_ang, col in zip(transitions, ['b', 'r', 'g']):
+    plt.plot(alpha_vals, results[t_ang]['H'], color=col, linewidth=2, 
+             label=f'Modified (Transition at {t_ang}°)')
+plt.title('Direct Kinematics of Lift: Pivot Height vs Inclination Angle (0° to 90°)')
 plt.xlabel('Inclination Angle $\\alpha$ (degrees)')
 plt.ylabel('Pivot Height $H$ (mm)')
 plt.grid(True)
@@ -100,21 +117,12 @@ plt.legend()
 plt.savefig('direct_kinematics.png', dpi=300)
 plt.close()
 
-# Plot 2: Inverse Kinematics alpha(H)
+# Plot 2: Ground Profiles y_ground(x)
 plt.figure(figsize=(10, 6))
-plt.plot(H_vals, alpha_vals, 'g-', linewidth=2, label='$\\alpha(H)$ (Flat Ground)')
-plt.title('Inverse Kinematics of Lift: Inclination Angle vs Pivot Height')
-plt.xlabel('Pivot Height $H$ (mm)')
-plt.ylabel('Inclination Angle $\\alpha$ (degrees)')
-plt.grid(True)
-plt.legend()
-plt.savefig('inverse_kinematics.png', dpi=300)
-plt.close()
-
-# Plot 3: Ground Profile
-plt.figure(figsize=(10, 6))
-plt.plot(x_profile_vals, y_ground_vals, 'm-', linewidth=2.5, label='Ground profile $y_{ground}(x)$')
-plt.title('Required Ground Profile to Linearize Lift Kinematics')
+for t_ang, col in zip(transitions, ['b', 'r', 'g']):
+    plt.plot(results[t_ang]['x'], results[t_ang]['y_ground'], color=col, linewidth=2.5, 
+             label=f'Ground profile $y_{{ground}}(x)$ (Transition at {t_ang}°)')
+plt.title('Required Ground Profile to Prevent Pivot Height Decrease')
 plt.xlabel('Horizontal Profile Coordinate $x$ (mm) from initial contact')
 plt.ylabel('Profile Height $y$ (mm)')
 plt.grid(True)
@@ -124,14 +132,18 @@ plt.close()
 
 print("Generated plots:")
 print("  - direct_kinematics.png")
-print("  - inverse_kinematics.png")
 print("  - ground_profile.png")
 
-# Interpolate ground profile at regular horizontal steps
-x_regular = np.arange(0, np.max(x_profile_vals), 100)
-y_regular = np.interp(x_regular, x_profile_vals, y_ground_vals)
+# Output regular coordinates for transition at 80 degrees
+x_profile_80 = results[80.0]['x']
+y_ground_80 = results[80.0]['y_ground']
+x_regular = np.arange(0, np.max(x_profile_80), 100)
+# Add maximum x point to list
+if x_regular[-1] < np.max(x_profile_80):
+    x_regular = np.append(x_regular, np.max(x_profile_80))
+y_regular = np.interp(x_regular, x_profile_80, y_ground_80)
 
-print("\nGround profile shape coordinates (every 100mm):")
+print("\nGround profile shape coordinates (Transition at 80°, every 100mm):")
 print(f"{'x (mm)':<12} | {'y (mm)':<12}")
 print("-" * 27)
 for x_val, y_val in zip(x_regular, y_regular):
