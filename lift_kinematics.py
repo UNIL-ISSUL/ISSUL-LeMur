@@ -13,7 +13,7 @@ if not os.path.exists(config_path):
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
-L = config['LONGERON_LENGTH_MM']    # 2620 mm (longeron length)
+L = config['LONGERON_LENGTH_MM']    # 2630 mm (updated longeron length)
 h = config['LONGERON_HEIGHT_MM']    # 185 mm (longeron height)
 D_wheel = config['REAR_WHEEL_DIAMETER_MM'] # 125 mm (rear wheel diameter)
 R = D_wheel / 2.0                   # 62.5 mm (rear wheel radius)
@@ -39,11 +39,9 @@ def inverse_kinematics_flat(H):
     return np.degrees(alpha_rad)
 
 # 3. Direct Kinematics with ground profile to prevent height decrease
-# We choose a transition angle alpha_0 (e.g., 80 degrees)
 # For alpha <= alpha_0: H(alpha) = H_flat(alpha)
 # For alpha > alpha_0: H(alpha) = H_flat(alpha_0) + H_flat'(alpha_0) * (alpha - alpha_0)
-# where H_flat'(alpha) = L * cos(alpha) - h * sin(alpha)
-def direct_kinematics_profile(alpha_deg, alpha_0_deg=90.0):
+def direct_kinematics_profile(alpha_deg, alpha_0_deg=80.0):
     alpha_rad = np.radians(alpha_deg)
     alpha_0_rad = np.radians(alpha_0_deg)
     
@@ -53,7 +51,6 @@ def direct_kinematics_profile(alpha_deg, alpha_0_deg=90.0):
     H_0_flat = L * np.sin(alpha_0_rad) + h * np.cos(alpha_0_rad) + R
     slope_0 = L * np.cos(alpha_0_rad) - h * np.sin(alpha_0_rad)
     
-    # For arrays or single values
     if isinstance(alpha_deg, np.ndarray):
         H = np.where(alpha_deg <= alpha_0_deg, 
                      H_flat, 
@@ -63,10 +60,35 @@ def direct_kinematics_profile(alpha_deg, alpha_0_deg=90.0):
         
     return H
 
+# 4. Inverse Kinematics with ground profile
+# Inverts the direct kinematics with the positive ground profile
+def inverse_kinematics_profile(H, alpha_0_deg=80.0):
+    alpha_0_rad = np.radians(alpha_0_deg)
+    H_0_flat = L * np.sin(alpha_0_rad) + h * np.cos(alpha_0_rad) + R
+    slope_0 = L * np.cos(alpha_0_rad) - h * np.sin(alpha_0_rad)
+    
+    # Case H <= H_0_flat (uses flat kinematics)
+    denom = np.sqrt(L**2 + h**2)
+    val = (H - R) / denom
+    val = np.clip(val, -1.0, 1.0)
+    alpha_flat_rad = np.arcsin(val) - np.arctan2(h, L)
+    alpha_flat_deg = np.degrees(alpha_flat_rad)
+    
+    # Case H > H_0_flat (uses linear inverse kinematics)
+    alpha_above_rad = alpha_0_rad + (H - H_0_flat) / slope_0
+    alpha_above_deg = np.degrees(alpha_above_rad)
+    
+    if isinstance(H, np.ndarray):
+        alpha_deg = np.where(H <= H_0_flat, alpha_flat_deg, alpha_above_deg)
+    else:
+        alpha_deg = alpha_flat_deg if H <= H_0_flat else alpha_above_deg
+        
+    return alpha_deg
+
 # Calculate ground profile height y_ground and coordinate x
 # y_ground = H_target - H_flat
 # x_profile = L * (1 - cos(alpha)) + h * sin(alpha)
-def compute_profile(alpha_deg, alpha_0_deg=90.0):
+def compute_profile(alpha_deg, alpha_0_deg=80.0):
     alpha_rad = np.radians(alpha_deg)
     H_target = direct_kinematics_profile(alpha_deg, alpha_0_deg)
     H_flat = L * np.sin(alpha_rad) + h * np.cos(alpha_rad) + R
@@ -85,10 +107,15 @@ results = {}
 for t_ang in transitions:
     H_p = direct_kinematics_profile(alpha_vals, t_ang)
     x_p, y_g = compute_profile(alpha_vals, t_ang)
+    
+    # Verify inverse kinematics for the modified profile
+    alpha_inv = inverse_kinematics_profile(H_p, t_ang)
+    
     results[t_ang] = {
         'H': H_p,
         'x': x_p,
-        'y_ground': y_g
+        'y_ground': y_g,
+        'alpha_inv': alpha_inv
     }
 
 # Create a DataFrame for transition angle = 80 degrees
@@ -97,7 +124,8 @@ df = pd.DataFrame({
     'H_flat_mm': H_flat_vals,
     'H_profile_80deg_mm': results[80.0]['H'],
     'X_profile_80deg_mm': results[80.0]['x'],
-    'Y_ground_80deg_mm': results[80.0]['y_ground']
+    'Y_ground_80deg_mm': results[80.0]['y_ground'],
+    'Alpha_inverse_80deg': results[80.0]['alpha_inv']
 })
 df.to_csv('lift_kinematics_data.csv', index=False)
 print("Saved data to lift_kinematics_data.csv")
@@ -117,7 +145,23 @@ plt.legend()
 plt.savefig('direct_kinematics.png', dpi=300)
 plt.close()
 
-# Plot 2: Ground Profiles y_ground(x)
+# Plot 2: Inverse Kinematics alpha(H)
+plt.figure(figsize=(10, 6))
+# Flat ground inverse is only valid up to the peak (85.96 deg)
+peak_idx = np.argmax(H_flat_vals)
+plt.plot(H_flat_vals[:peak_idx], alpha_vals[:peak_idx], 'k--', linewidth=1.5, label='Flat Ground (only valid up to peak)')
+for t_ang, col in zip(transitions, ['b', 'r', 'g']):
+    plt.plot(results[t_ang]['H'], results[t_ang]['alpha_inv'], color=col, linewidth=2, 
+             label=f'Modified (Transition at {t_ang}°)')
+plt.title('Inverse Kinematics of Lift: Inclination Angle vs Pivot Height')
+plt.xlabel('Pivot Height $H$ (mm)')
+plt.ylabel('Inclination Angle $\\alpha$ (degrees)')
+plt.grid(True)
+plt.legend()
+plt.savefig('inverse_kinematics.png', dpi=300)
+plt.close()
+
+# Plot 3: Ground Profiles y_ground(x)
 plt.figure(figsize=(10, 6))
 for t_ang, col in zip(transitions, ['b', 'r', 'g']):
     plt.plot(results[t_ang]['x'], results[t_ang]['y_ground'], color=col, linewidth=2.5, 
@@ -132,6 +176,7 @@ plt.close()
 
 print("Generated plots:")
 print("  - direct_kinematics.png")
+print("  - inverse_kinematics.png")
 print("  - ground_profile.png")
 
 # Output regular coordinates for transition at 80 degrees
