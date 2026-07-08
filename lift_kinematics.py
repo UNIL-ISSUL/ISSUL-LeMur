@@ -46,8 +46,16 @@ for _ in range(100):
     else:
         high = mid
 
-alpha_0_opt = (low + high) / 2.0
-print(f"Optimized Transition Angle (alpha_0) = {alpha_0_opt:.4f}°")
+alpha_0_opt = float(math.floor((low + high) / 2.0))
+print(f"Optimized Transition Angle (alpha_0, floored) = {alpha_0_opt:.1f}°")
+
+# Calculate slope after the threshold
+alpha_0_rad = np.radians(alpha_0_opt)
+slope_rad = L * np.cos(alpha_0_rad) - h * np.sin(alpha_0_rad)
+slope_deg = slope_rad * (np.pi / 180.0)
+print(f"Slope after threshold:")
+print(f"  {slope_rad:.4f} mm/radian")
+print(f"  {slope_deg:.4f} mm/degree")
 
 # 2. Direct Kinematics on flat ground: H_flat(alpha)
 def direct_kinematics_flat(alpha_deg):
