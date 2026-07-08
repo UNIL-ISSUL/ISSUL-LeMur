@@ -4,7 +4,7 @@
 CYCLETIME_MS : 100       #cycle time in ms
 
 #MECAHNICAL CHARATERISTICS
-LONGERON_LENGTH_MM : 2620   # distance between wheel and pivot
+LONGERON_LENGTH_MM : 2630   # distance between wheel and pivot
 LONGERON_HEIGHT_MM : 185    # distance entre l'axe de la roue et l'axe du rouleau arr
 Z_MOTOR : 26                # tooth on motor side
 Z_BELT : 64                 # tooth on belt side

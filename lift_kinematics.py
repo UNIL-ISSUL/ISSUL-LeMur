@@ -43,7 +43,7 @@ def inverse_kinematics_flat(H):
 # For alpha <= alpha_0: H(alpha) = H_flat(alpha)
 # For alpha > alpha_0: H(alpha) = H_flat(alpha_0) + H_flat'(alpha_0) * (alpha - alpha_0)
 # where H_flat'(alpha) = L * cos(alpha) - h * sin(alpha)
-def direct_kinematics_profile(alpha_deg, alpha_0_deg=80.0):
+def direct_kinematics_profile(alpha_deg, alpha_0_deg=90.0):
     alpha_rad = np.radians(alpha_deg)
     alpha_0_rad = np.radians(alpha_0_deg)
     
@@ -66,7 +66,7 @@ def direct_kinematics_profile(alpha_deg, alpha_0_deg=80.0):
 # Calculate ground profile height y_ground and coordinate x
 # y_ground = H_target - H_flat
 # x_profile = L * (1 - cos(alpha)) + h * sin(alpha)
-def compute_profile(alpha_deg, alpha_0_deg=80.0):
+def compute_profile(alpha_deg, alpha_0_deg=90.0):
     alpha_rad = np.radians(alpha_deg)
     H_target = direct_kinematics_profile(alpha_deg, alpha_0_deg)
     H_flat = L * np.sin(alpha_rad) + h * np.cos(alpha_rad) + R
