@@ -13,15 +13,19 @@ if not os.path.exists(config_path):
 with open(config_path, 'r') as f:
     config = yaml.safe_load(f)
 
-L = config['LONGERON_LENGTH_MM']    # 2630 mm (updated longeron length)
+L = config['LONGERON_LENGTH_MM']    # 2630 mm (longeron length)
 h = config['LONGERON_HEIGHT_MM']    # 185 mm (longeron height)
 D_wheel = config['REAR_WHEEL_DIAMETER_MM'] # 125 mm (rear wheel diameter)
 R = D_wheel / 2.0                   # 62.5 mm (rear wheel radius)
+
+output_dir = 'kinematics'
+os.makedirs(output_dir, exist_ok=True)
 
 print(f"Geometry parameters loaded:")
 print(f"  Longeron Length (L) = {L} mm")
 print(f"  Longeron Height (h) = {h} mm")
 print(f"  Rear Wheel Diameter = {D_wheel} mm (Radius R = {R} mm)")
+print(f"All output files will be saved in the directory: {output_dir}")
 
 # 1. Direct Kinematics on flat ground: H_flat(alpha)
 # H_flat(alpha) = L * sin(alpha) + h * cos(alpha) + R
@@ -107,8 +111,6 @@ results = {}
 for t_ang in transitions:
     H_p = direct_kinematics_profile(alpha_vals, t_ang)
     x_p, y_g = compute_profile(alpha_vals, t_ang)
-    
-    # Verify inverse kinematics for the modified profile
     alpha_inv = inverse_kinematics_profile(H_p, t_ang)
     
     results[t_ang] = {
@@ -118,8 +120,8 @@ for t_ang in transitions:
         'alpha_inv': alpha_inv
     }
 
-# Create a DataFrame for transition angle = 80 degrees
-df = pd.DataFrame({
+# Create a DataFrame for transition angle = 80 degrees (full range 0 to 90)
+df_full = pd.DataFrame({
     'Alpha_deg': alpha_vals,
     'H_flat_mm': H_flat_vals,
     'H_profile_80deg_mm': results[80.0]['H'],
@@ -127,8 +129,37 @@ df = pd.DataFrame({
     'Y_ground_80deg_mm': results[80.0]['y_ground'],
     'Alpha_inverse_80deg': results[80.0]['alpha_inv']
 })
-df.to_csv('lift_kinematics_data.csv', index=False)
-print("Saved data to lift_kinematics_data.csv")
+df_full.to_csv(os.path.join(output_dir, 'lift_kinematics_data.csv'), index=False)
+print("Saved data to kinematics/lift_kinematics_data.csv")
+
+# 5. Generate local wedge profiles starting at their own 0 (where the ramp starts)
+# and format them for Fusion 360 import (X, Y, Z headerless CSV)
+for t_ang in transitions:
+    # We only care about the region from t_ang to 90 degrees where the wedge is non-zero
+    alpha_wedge_vals = np.linspace(t_ang, 90, 200)
+    x_w, y_w = compute_profile(alpha_wedge_vals, t_ang)
+    
+    # Starting offset x_0
+    x_0 = x_w[0]
+    
+    # Local coordinates: starts at 0
+    x_local = x_w - x_0
+    y_local = y_w
+    z_local = np.zeros_like(x_local)
+    
+    # Save standard CSV with headers
+    df_wedge = pd.DataFrame({
+        'X_local_mm': x_local,
+        'Y_height_mm': y_local,
+        'Z_mm': z_local
+    })
+    csv_name = f'wedge_profile_{int(t_ang)}deg.csv'
+    df_wedge.to_csv(os.path.join(output_dir, csv_name), index=False)
+    
+    # Save headerless CSV for Fusion 360 (Comma delimited X,Y,Z with no headers)
+    fusion_csv_name = f'wedge_profile_{int(t_ang)}deg_fusion.csv'
+    df_wedge.to_csv(os.path.join(output_dir, fusion_csv_name), header=False, index=False)
+    print(f"Saved wedge profiles for transition at {t_ang}° to {output_dir}/")
 
 # Plotting
 # Plot 1: Direct Kinematics H(alpha)
@@ -142,12 +173,11 @@ plt.xlabel('Inclination Angle $\\alpha$ (degrees)')
 plt.ylabel('Pivot Height $H$ (mm)')
 plt.grid(True)
 plt.legend()
-plt.savefig('direct_kinematics.png', dpi=300)
+plt.savefig(os.path.join(output_dir, 'direct_kinematics.png'), dpi=300)
 plt.close()
 
 # Plot 2: Inverse Kinematics alpha(H)
 plt.figure(figsize=(10, 6))
-# Flat ground inverse is only valid up to the peak (85.96 deg)
 peak_idx = np.argmax(H_flat_vals)
 plt.plot(H_flat_vals[:peak_idx], alpha_vals[:peak_idx], 'k--', linewidth=1.5, label='Flat Ground (only valid up to peak)')
 for t_ang, col in zip(transitions, ['b', 'r', 'g']):
@@ -158,7 +188,7 @@ plt.xlabel('Pivot Height $H$ (mm)')
 plt.ylabel('Inclination Angle $\\alpha$ (degrees)')
 plt.grid(True)
 plt.legend()
-plt.savefig('inverse_kinematics.png', dpi=300)
+plt.savefig(os.path.join(output_dir, 'inverse_kinematics.png'), dpi=300)
 plt.close()
 
 # Plot 3: Ground Profiles y_ground(x)
@@ -171,24 +201,26 @@ plt.xlabel('Horizontal Profile Coordinate $x$ (mm) from initial contact')
 plt.ylabel('Profile Height $y$ (mm)')
 plt.grid(True)
 plt.legend()
-plt.savefig('ground_profile.png', dpi=300)
+plt.savefig(os.path.join(output_dir, 'ground_profile.png'), dpi=300)
 plt.close()
 
-print("Generated plots:")
+print("Generated plots in kinematics/:")
 print("  - direct_kinematics.png")
 print("  - inverse_kinematics.png")
 print("  - ground_profile.png")
 
 # Output regular coordinates for transition at 80 degrees
-x_profile_80 = results[80.0]['x']
-y_ground_80 = results[80.0]['y_ground']
-x_regular = np.arange(0, np.max(x_profile_80), 100)
-# Add maximum x point to list
-if x_regular[-1] < np.max(x_profile_80):
-    x_regular = np.append(x_regular, np.max(x_profile_80))
-y_regular = np.interp(x_regular, x_profile_80, y_ground_80)
+# Regenerate regular coordinates relative to local 0
+alpha_wedge_80 = np.linspace(80.0, 90.0, 200)
+x_w_80, y_w_80 = compute_profile(alpha_wedge_80, 80.0)
+x_local_80 = x_w_80 - x_w_80[0]
 
-print("\nGround profile shape coordinates (Transition at 80°, every 100mm):")
+x_regular = np.arange(0, np.max(x_local_80), 50)
+if x_regular[-1] < np.max(x_local_80):
+    x_regular = np.append(x_regular, np.max(x_local_80))
+y_regular = np.interp(x_regular, x_local_80, y_w_80)
+
+print("\nWedge profile shape coordinates starting at local 0 (Transition at 80°):")
 print(f"{'x (mm)':<12} | {'y (mm)':<12}")
 print("-" * 27)
 for x_val, y_val in zip(x_regular, y_regular):
