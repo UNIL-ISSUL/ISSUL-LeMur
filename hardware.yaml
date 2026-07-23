@@ -4,11 +4,13 @@
 CYCLETIME_MS : 100       #cycle time in ms
 
 #MECAHNICAL CHARATERISTICS
-BELT_LENGTH_MM : 2620   # distance between wheel and pivot
-BELT_HEIGHT_MM : 185    # distance entre l'axe de la roue et l'axe du rouleau arr
-Z_MOTOR : 26            # tooth on motor side
-Z_BELT : 64             # tooth on belt side
-RADIUS_CYL_MM : 93      # Raduis of belt cynlinder on motor side 186/2
+LONGERON_LENGTH_MM : 2630   # distance between wheel and pivot
+LONGERON_HEIGHT_MM : 185    # distance entre l'axe de la roue et l'axe du rouleau arr
+Z_MOTOR : 26                # tooth on motor side
+Z_BELT : 64                 # tooth on belt side
+RADIUS_CYL_MM : 93          # Raduis of belt cynlinder on motor side 186/2
+REAR_WHEEL_DIAMETER_MM : 125 # Diameter of the rear wheel rolling on ground
+TARGET_PIVOT_HEIGHT_AT_90_MM : 2750 # Target height at 90 degrees to compute transition angle
 
 #BELT SPEED 
 BELT_MAX_FREQUENCY_HZ : 100
