@@ -6,7 +6,7 @@
         size_hint_y : None
         Label :
             text :root.name + " : " + "{:.2f}".format(root.value) + " / " + "{:.2f}".format(root.target) + " " + root.unit
-            font_size : 25
+            font_size : '22sp'
             disabled : root.hidden
             size_hint_x: 0.33
         Slider : 
@@ -75,7 +75,7 @@
     orientation : 'vertical'
     Label :
         text :root.name + ": " + "{:.1f}".format(root.value) + " " + root.unit
-        font_size : 24
+        font_size : '20sp'
     BoxLayout : 
         orientation : 'horizontal'
         Button :
@@ -106,7 +106,7 @@
         id : led
     Label :
         text : root.name
-        font_size : 18
+        font_size : '18sp'
         #text_size : self.size
     	valign : 'center'
     	halign : 'left'
@@ -211,7 +211,7 @@
         Label :
             text : 'Paramètre piloté :'
             height : '40dp'
-            font_size : 24
+            font_size : '22sp'
         ToggleButton :
             allow_no_selection : False
             text : 'Aucun'
@@ -335,30 +335,29 @@ BoxLayout :
     BoxLayout:
         orientation : 'vertical'
         size_hint_x : 0.35
-        font_size : 20
         spacing : 10
 
         Button :
             text : 'Change direction'
             on_press : app.show_reverse_popup()
-            font_size : self.font_size
-            height : '40dp'
+            font_size : '20sp'
+            height : '45dp'
             size_hint_y : None
 
         Button :
             text : 'Choose surface'
             on_press : app.show_surface_popup()
-            font_size : self.font_size
-            height : '40dp'
+            font_size : '20sp'
+            height : '45dp'
             size_hint_y : None
 
         TreadmillLayout:
             id: treadmill
-            font_size: 18
+            font_size: '18sp'
             safeties : app.treadmill_status['safeties']
             mode_belt : app.steps_active
             belt_direction : app.treadmill_status['belt_direction']
 
         Controller :
             id : controller
-            font_size : self.font_size
+            font_size : '20sp'

@@ -9,6 +9,21 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.logger import Logger
 from kivy.config import Config
+import hardware
+
+# Configure Full HD 1080p graphics
+if hardware.is_raspberry_pi():
+    Config.set('graphics', 'fullscreen', 'auto')
+else:
+    Config.set('graphics', 'width', '1920')
+    Config.set('graphics', 'height', '1080')
+    Config.set('graphics', 'minimum_width', '1024')
+    Config.set('graphics', 'minimum_height', '600')
+    Config.set('graphics', 'resizable', '1')
+
+# Disable multitouch emulation on mouse right click for cleaner PC desktop UX
+Config.set('input', 'mouse', 'mouse,disable_multitouch')
+
 from kivy.core.window import Window
 from kivy.uix.accordion import Accordion, AccordionItem
 from kivy.uix.label import Label
@@ -18,9 +33,6 @@ from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.uix.screenmanager import ScreenManager
 from utils.treadmill_layout import TreadmillLayout
-
-
-
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty, ObjectProperty, ListProperty, ColorProperty
 import hardware
 import treadmill
