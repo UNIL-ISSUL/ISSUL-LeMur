@@ -4,12 +4,52 @@ Created on Wed Oct 13 09:42:51 2021
 
 @author: jparent1
 """
+import os
+import subprocess
+import hardware
+
+def configure_display_density():
+    """Configure dynamiquement la densité Kivy selon le moniteur actif sur PC."""
+    if hardware.is_raspberry_pi() or 'KIVY_METRICS_DENSITY' in os.environ:
+        return
+
+    try:
+        res = subprocess.run(['xrandr', '--listmonitors'], capture_output=True, text=True, timeout=2)
+        primary_h = 1080
+        max_h = 1080
+        for line in res.stdout.strip().split('\n')[1:]:
+            parts = line.strip().split()
+            if len(parts) >= 3:
+                geom = parts[2]
+                res_part = geom.split('+')[0]
+                w_h = res_part.split('x')
+                h = int(w_h[1].split('/')[0])
+                if '*' in parts[1]:
+                    primary_h = h
+                max_h = max(max_h, h)
+
+        target_h = primary_h if primary_h > 1080 else max_h
+        
+        # 4K UHD (3840x2160 ou Wayland scaled >= 2160)
+        if target_h >= 2160:
+            os.environ['KIVY_METRICS_DENSITY'] = '1.5'
+        # 2K QHD (2560x1440 ou 1400 <= h < 2160)
+        elif target_h >= 1400:
+            os.environ['KIVY_METRICS_DENSITY'] = '1.33'
+        # Full HD (1920x1080)
+        else:
+            os.environ['KIVY_METRICS_DENSITY'] = '1.0'
+    except Exception:
+        os.environ['KIVY_METRICS_DENSITY'] = '1.0'
+
+configure_display_density()
+
 import kivy
 from kivy.app import App
 from kivy.clock import Clock
 from kivy.logger import Logger
+
 from kivy.config import Config
-import hardware
 
 # Configure Full HD 1080p graphics
 if hardware.is_raspberry_pi():

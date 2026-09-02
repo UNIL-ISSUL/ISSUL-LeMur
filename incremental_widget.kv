@@ -1,19 +1,22 @@
 <IncrementalWidget>:
     orientation: 'vertical'
-    padding: [10, 10, 10, 10]
+    padding: ['10dp', '10dp', '10dp', '10dp']
 
     BoxLayout:
         size_hint_y: None
-        height: '40dp'
-        padding: [0, 0, 0, 10]
+        height: '45dp'
+        padding: [0, 0, 0, '10dp']
         Label:
             text: 'Nom du sujet:'
+            font_size: '18sp'
             size_hint_x: None
-            width: '100dp'
+            width: '130dp'
         TextInput:
             id: subject_name_input
             text: 'sujet'
+            font_size: '18sp'
             multiline: False
+
     #---- PARTIE TABLEAU DE SAISIE ----#
     BoxLayout:
         orientation: 'vertical'
@@ -22,39 +25,47 @@
         BoxLayout:
             orientation: 'horizontal'
             size_hint_y: None
-            height: '40dp'
+            height: '45dp'
+            spacing: '6dp'
                         
             Button:
                 text: 'Ajouter un point'
+                font_size: '18sp'
                 on_press: root.add_point()
             
             Button:
                 text: "Charger profil"
+                font_size: '18sp'
                 on_release: root.load_profile()
             Button:
                 text: "Sauvegarder profil"
+                font_size: '18sp'
                 on_release: root.save_profile()
 
         GridLayout:
-            cols : 5
+            cols: 5
             size_hint_y: None
-            height: "30dp"
-            row_default_height: 30
+            height: "35dp"
+            row_default_height: "35dp"
             row_force_default: True
-            padding: [0, 4]
-            spacing: [4, 4]
+            padding: [0, '4dp']
+            spacing: ['4dp', '4dp']
             Label:
                 text: 'Temps [s]'
+                font_size: '18sp'
             Label:
                 text: 'Inclinaison [°]'
+                font_size: '18sp'
             Label:
                 text: 'Vitesse [km/h]'
+                font_size: '18sp'
             Label:
                 text: 'Vitesse Asc. [m/h]'
+                font_size: '18sp'
             Label:
                 text: ''
                 size_hint_x: None
-                width: 100
+                width: '110dp'
 
         BoxLayout:         # conteneur pour ScrollView
             orientation: 'vertical'
@@ -63,7 +74,7 @@
             ScrollView:
                 do_scroll_x: False
                 do_scroll_y: True
-                bar_width: 10
+                bar_width: '10dp'
                 size_hint_y: 1
 
                 GridLayout:
@@ -71,10 +82,10 @@
                     cols: 5
                     size_hint_y: None
                     height: self.minimum_height
-                    row_default_height: "30dp"
+                    row_default_height: "35dp"
                     row_force_default: True
-                    padding: [0, 4]
-                    spacing: [4, 4]
+                    padding: [0, '4dp']
+                    spacing: ['4dp', '4dp']
 
     #---- ESPACE DE SEPARATION ----#
     BoxLayout:
@@ -88,24 +99,29 @@
 
         BoxLayout:
             size_hint_y: None
-            height: '40dp'
+            height: '45dp'
+            spacing: '6dp'
             Label:
                 text: 'Abscisse:'
+                font_size: '18sp'
                 size_hint_x: None
-                width: '100dp'
+                width: '110dp'
             ToggleButton:
                 text: 'Inclinaison'
+                font_size: '18sp'
                 group: 'graph_axis'
                 state: 'down'
                 allow_no_selection: False
                 on_press: root.set_graph_variable('incl')
             ToggleButton:
                 text: 'Vitesse'
+                font_size: '18sp'
                 group: 'graph_axis'
                 allow_no_selection: False
                 on_press: root.set_graph_variable('speed')
             ToggleButton:
                 text: 'Vitesse Asc.'
+                font_size: '18sp'
                 group: 'graph_axis'
                 allow_no_selection: False
                 on_press: root.set_graph_variable('asc')
@@ -116,12 +132,13 @@
                 id: graph_view
             BoxLayout:
                 size_hint_x: None
-                width: '50dp'
+                width: '60dp'
                 orientation: 'vertical'
                 Label:
                     text: 'Zoom'
+                    font_size: '16sp'
                     size_hint_y: None
-                    height: '20dp'
+                    height: '25dp'
                 Slider:
                     id: zoom_slider
                     orientation: 'vertical'
@@ -130,10 +147,12 @@
                     value: root.zoom
                     step: 1
                     on_value: root.update_graph_zoom(self.value)
+
     #---- ESPACE DE SEPARATION ----#
     BoxLayout:
         size_hint_y: None
-        height: '10dp'  
+        height: '10dp'
+
     #---- PARTIE EVENEMENTS ----#
     BoxLayout:
         orientation: 'vertical'
@@ -141,35 +160,43 @@
 
         BoxLayout:
             size_hint_y: None
-            height: "40dp"
+            height: "45dp"
             Button:
                 text: "Ajouter un événement"
+                font_size: '18sp'
                 on_release: root.add_event()
    
         GridLayout:
             cols: 7
             size_hint_y: None
-            height: "30dp"
-            row_default_height: 30
+            height: "35dp"
+            row_default_height: "35dp"
             row_force_default: True
-            padding: [0, 4]
-            spacing: [4, 4]
+            padding: [0, '4dp']
+            spacing: ['4dp', '4dp']
 
             # En-têtes
             Label: 
                 text: "Temps [s]"
+                font_size: '18sp'
             Label: 
                 text: "Vitesse SP"
+                font_size: '18sp'
             Label:
                 text: "Vitesse PV"
+                font_size: '18sp'
             Label: 
                 text: "Inclinaison SP"
+                font_size: '18sp'
             Label:
                 text: "Inclinaison PV"
+                font_size: '18sp'
             Label: 
                 text: "Vitesse Asc. SP"
+                font_size: '18sp'
             Label:
                 text: "Vitesse Asc. PV"
+                font_size: '18sp'
 
         BoxLayout:         # conteneur pour ScrollView
             orientation: 'vertical'
@@ -177,15 +204,17 @@
             ScrollView:
                 do_scroll_x: False
                 do_scroll_y: True
-                bar_width: 10
+                bar_width: '10dp'
                 size_hint_y: 1
                 GridLayout:
                     id: events_grid
                     cols: 7
                     size_hint_y: None
                     height: self.minimum_height
-                    row_default_height: "30dp"
+                    row_default_height: "35dp"
                     row_force_default: True
+                    padding: [0, '4dp']
+                    spacing: ['4dp', '4dp']
 
 
         

@@ -10,6 +10,7 @@ from kivy.uix.label import Label
 from kivy.properties import NumericProperty, ListProperty
 from kivy.clock import Clock
 from kivy.lang import Builder
+from kivy.metrics import dp, sp
 from math import radians, sin, degrees, asin, floor, ceil, log10
 import numpy as np
 import time, csv, os
@@ -130,15 +131,15 @@ class IncrementalWidget(BoxLayout):
         if "points_grid" in self.ids :
             grid = self.ids.points_grid
 
-            ti_time = TabNavigableInput(hint_text='s', multiline=False)#, input_filter='float')
-            ti_incl = TabNavigableInput(hint_text='°', multiline=False)#, input_filter='float')
-            ti_speed = TabNavigableInput(hint_text='km/h', multiline=False)#, input_filter='float')
-            ti_asc = TabNavigableInput(hint_text='m/h', multiline=False)#, input_filter='float')
+            ti_time = TabNavigableInput(hint_text='s', multiline=False, font_size='18sp')
+            ti_incl = TabNavigableInput(hint_text='°', multiline=False, font_size='18sp')
+            ti_speed = TabNavigableInput(hint_text='km/h', multiline=False, font_size='18sp')
+            ti_asc = TabNavigableInput(hint_text='m/h', multiline=False, font_size='18sp')
 
             for ti in [ti_time, ti_incl, ti_speed, ti_asc]:
                 ti.parent_widget = self
 
-            btn = Button(text="Supprimer", size_hint_x=None, width=100)
+            btn = Button(text="Supprimer", size_hint_x=None, width=dp(110), font_size='18sp')
 
             row = {'time': ti_time, 'incl': ti_incl, 'speed': ti_speed, 'asc': ti_asc, 'btn': btn}
             self.points.append(row)
@@ -329,13 +330,13 @@ class IncrementalWidget(BoxLayout):
         grid = self.ids.events_grid
         grid.clear_widgets()
         for event in self.events:
-            grid.add_widget(Label(text="{:.2f}".format(event["time"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["speed_sp"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["speed_pv"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["angle_sp"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["angle_pv"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["asc_sp"])))
-            grid.add_widget(Label(text="{:.2f}".format(event["asc_pv"])))
+            grid.add_widget(Label(text="{:.2f}".format(event["time"]), font_size='18sp'))
+            grid.add_widget(Label(text="{:.2f}".format(event["speed_sp"]), font_size='18sp'))
+            grid.add_widget(Label(text="{:.2f}".format(event["speed_pv"]), font_size='18sp'))
+            grid.add_widget(Label(text="{:.2f}".format(event["angle_sp"]), font_size='18sp'))
+            grid.add_widget(Label(text="{:.2f}".format(event["angle_pv"]), font_size='18sp'))
+            grid.add_widget(Label(text="{:.2f}".format(event["asc_sp"]), font_size='18sp'))
+            grid.add_widget(Label(text="{:.2f}".format(event["asc_pv"]), font_size='18sp'))
             #grid.add_widget(Button(text="Supprimer", on_release=lambda btn, ev=event: self.delete_event(ev)))
     
     def add_event(self):
@@ -473,9 +474,9 @@ class IncrementalWidget(BoxLayout):
         #define file chooser widget et text input
         chooser = FileChooserListView(path="profiles", filters=["*.csv"], dirselect=(action == "save"))
         chooser.bind(on_submit=lambda chooser, selection, touch: submit_from_double_click(selection))
-        file_input = TextInput(text="", hint_text="Nom du fichier (ex: test.csv)", size_hint_y=None, height="40dp")
+        file_input = TextInput(text="", hint_text="Nom du fichier (ex: test.csv)", size_hint_y=None, height="45dp", font_size='18sp')
         #add widgets tzo layout
-        layout = BoxLayout(orientation="vertical", spacing=10)
+        layout = BoxLayout(orientation="vertical", spacing=dp(10))
         layout.add_widget(chooser)
         if action == "save":
             layout.add_widget(file_input)
@@ -506,7 +507,7 @@ class IncrementalWidget(BoxLayout):
                 popup.dismiss()
                 callback(selection[0])
 
-        btn = Button(text="Valider", size_hint_y=None, height="40dp")
+        btn = Button(text="Valider", size_hint_y=None, height="45dp", font_size='18sp')
         btn.bind(on_press=on_select)
         layout.add_widget(btn)
 
