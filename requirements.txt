@@ -1,6 +1,17 @@
+# Core GUI & Graphing
 kivy
 kivy-garden
 kivy_garden.graph
-PyYAML
-numpy
+
+# Hardware & Configuration
 revpimodio2
+PyYAML
+
+# Numerical & Kinematics Analysis
+numpy
+pandas
+matplotlib
+
+# Terminal Debug Tools
+hipsterplot
+

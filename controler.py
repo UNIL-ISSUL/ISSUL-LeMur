@@ -8,7 +8,6 @@ from threading import Thread
 from pathlib import Path
 import numpy as np
 import math
-from scipy.interpolate import griddata
 #READ CONFIGURATION FILE
 import yaml
 try:
