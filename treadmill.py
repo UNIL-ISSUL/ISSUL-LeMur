@@ -2,7 +2,11 @@
 #Calcul du elapsed time de start,stop, pause, resume
 #Calul de la distance parcourue, du dénivelé
 from time import time
-from kivy.logger import Logger
+try:
+    from kivy.logger import Logger
+except ImportError:
+    import logging
+    Logger = logging.getLogger("treadmill")
 import math
 from random import random
 
@@ -42,7 +46,6 @@ import queue
 import threading
 from time import sleep
 import collections
-import numpy as np
 import yaml
 from pathlib import Path
 
@@ -97,10 +100,6 @@ class TreadmillController:
         if self.hardware and hasattr(self.hardware, 'set_steps'):
             self.hardware.set_steps(self.steps_active)
         
-        # Initialize history deques before reset_variables() call
-        self.pv_history = collections.deque(maxlen=9)
-        self.sp_history = collections.deque(maxlen=9)
-        self.reset_variables()
         self.belt_acc = config.get('BELT_ACC', 0)
         self.current_speed_command = 0
         self.test_name = "manual_test"
@@ -119,14 +118,11 @@ class TreadmillController:
         self.log_queue = queue.Queue()
         self.log_thread = None
         self.stop_logging_thread = threading.Event()
-        # Belt drift compensation
-        max_drift_pct = config.get('max_drift_pct', 10)
-
-        self.min_drift = 1.0 - (max_drift_pct / 100.0)
-        self.max_drift = 1.0 + (max_drift_pct / 100.0)
-
-        self.drift = 1.0
-        self.compensated_belt_speed_SP = 0
+        # Belt drift compensation (PI controller)
+        self.max_drift_pct = config.get('max_drift_pct', 10)
+        self.kp = config.get('belt_kp', 0.8)
+        self.ki = config.get('belt_ki', 0.2)
+        self.integrale_drift = 0.0
         self.reset_variables()
 
     def _log_worker(self):
@@ -244,8 +240,7 @@ class TreadmillController:
         self.treadmill_points = collections.deque(maxlen=16200) # 90 minutes of data at 3Hz
         self.event_list = []
         self.update_counter = 0
-        self.pv_history.clear()
-        self.sp_history.clear()
+        self.integrale_drift = 0.0
 
     def update(self):
         #update PV
@@ -272,36 +267,8 @@ class TreadmillController:
         #compute vertical speed
         self.vertical_speed_PV = compute_vertical_speed_mh(self.lift_angle_PV,self.belt_speed_PV)
 
-        # Belt drift compensation
+        #update running value
         if self.is_running():
-            self.pv_history.append(self.belt_speed_PV)
-            self.sp_history.append(self.belt_speed_SP)
-            #copy drift
-            drift = self.drift
-            #compatation on ful array
-            if len(self.pv_history) == self.pv_history.maxlen:
-                pv_array = np.array(self.pv_history)
-                sp_array = np.array(self.sp_history)
-                #self.pv_history.clear()
-                #avoid divistion by 0
-                non_zero_mask = pv_array != 0
-                if np.any(non_zero_mask):
-                    ratios = sp_array[non_zero_mask] / pv_array[non_zero_mask]
-                    ratios = ratios[np.isfinite(ratios)]
-
-                    if ratios.size > 0:
-                        mean_drift = np.median(ratios)
-                        #drift = np.clip(mean_drift, self.min_drift, self.max_drift)
-                        #truncate 0.001
-                        drift = np.round(mean_drift, 2)
-            #update drift only if it changed to avoid unnecessary belt speed updates
-            if drift != np.round(self.drift,2):
-                #avoid drift update during acceleration by limiting drift update out of range
-                if drift >= self.min_drift and drift <= self.max_drift and drift!=1:
-                    self.drift = self.drift + math.copysign(0.001,drift-1)
-                    self.drift = max(self.min_drift, min(self.max_drift, self.drift))    #clip drift to range
-                    self.update_belt_speed()
-
             # Downsample data for the live graph (3Hz)
             self.update_counter += 1
             if self.update_counter % 3 == 0:
@@ -313,8 +280,6 @@ class TreadmillController:
                     'asc': self.vertical_speed_PV
                 })
 
-        #update running value
-        if self.is_running():
             #update elapsed time
             current_time = time()
             #init time if first loop
@@ -324,28 +289,42 @@ class TreadmillController:
             self.elapsed_time = current_time - self.start_time - self.elapsed_pause_time
             delta_time = current_time - self.last_update_time
             
-            # RAMP LOGIC
-            if self.current_speed_command != self.belt_speed_SP:
-                max_speed_change = self.belt_acc * delta_time
-                if max_speed_change > 0.5 :
-                    max_speed_change = self.belt_acc * delta_time #update at 10Hz
-                diff = self.belt_speed_SP - self.current_speed_command
+            if delta_time > 0:
+                # 1. RAMP LOGIC (Feedforward target speed)
+                if self.current_speed_command != self.belt_speed_SP:
+                    max_speed_change = self.belt_acc * delta_time
+                    diff = self.belt_speed_SP - self.current_speed_command
+                    if abs(diff) <= max_speed_change:
+                        self.current_speed_command = self.belt_speed_SP
+                    else:
+                        self.current_speed_command += math.copysign(max_speed_change, diff)
 
-                if abs(diff) <= max_speed_change:
-                    self.current_speed_command = self.belt_speed_SP
+                # 2. PI CONTROLLER + ANTI-WINDUP (Slip correction)
+                erreur = self.current_speed_command - self.belt_speed_PV
+                seuil_accel = 1.0 # Speed difference threshold (km/h) to detect dynamic acceleration
+                
+                # Anti-Windup: Freeze integrator if the feedforward ramp is not finished or if error is too large
+                if abs(self.belt_speed_SP - self.current_speed_command) > 0.1 or abs(erreur) > seuil_accel:
+                    pass # Do not accumulate integral
                 else:
-                    # Increment or decrement speed command towards setpoint
-                    # if PV is close to current command increment current_speed_command
-                    #if abs(self.belt_speed_PV - self.current_speed_command) <= 0.5 :
-                    self.current_speed_command += math.copysign(max_speed_change, diff)
+                    # System is close to target, accumulate error to correct drift
+                    self.integrale_drift += erreur * delta_time * self.ki
+                    
+                    # Dynamic Clamping: Limit the integral correction to a percentage of the current speed command
+                    max_correction = self.current_speed_command * (self.max_drift_pct / 100.0)
+                    self.integrale_drift = max(min(self.integrale_drift, max_correction), -max_correction)
+                
+                correction_pi = (erreur * self.kp) + self.integrale_drift
+                
+                # 3. FINAL HARDWARE COMMAND
+                # Final command = Feedforward (theoretical ramp) + Trim (PI correction)
+                commande_finale = self.current_speed_command + correction_pi
+                commande_finale = max(0.0, commande_finale) # Safety against unwanted reverse command
 
                 if self.hardware:
-                    self.hardware.set_belt_speed(self.current_speed_command)
-                #print("max speed change :" + str(max_speed_change) )
-                print("current_speed_command :"+str(self.current_speed_command)+" PV :"+str(self.belt_speed_PV))
+                    self.hardware.set_belt_speed(commande_finale)
             
-            #compute distance and elevation
-            if delta_time > 0:
+                #compute distance and elevation
                 self.distance_m += (self.belt_speed_PV * 1000 / 3600) * delta_time
                 delta_elevation = (self.vertical_speed_PV / 3600) * delta_time
                 if not self.belt_direction: #if backward
@@ -452,14 +431,8 @@ class TreadmillController:
 
     def set_belt_speed(self, speed):
         self.belt_speed_SP = speed
-        self.update_belt_speed()
         Logger.info(f"Treadmill: Set belt speed to {speed}")
 
-    def update_belt_speed(self):
-        self.compensated_belt_speed_SP = self.belt_speed_SP * self.drift
-        if self.hardware:
-            self.hardware.set_belt_speed(self.compensated_belt_speed_SP)
-        #Logger.info(f"Treadmill: Updated belt speed SP to {self.belt_speed_SP}. With current drift of {self.drift:.3f}, compensated SP is {self.compensated_belt_speed_SP:.2f}")
     def reverse_belt(self, direction):
         self.belt_direction = direction
         if self.hardware:

@@ -102,40 +102,74 @@ class TestTreadmillController(unittest.TestCase):
 
 
     def test_drift_compensation(self):
-        print("Testing drift compensation...")
+        print("Testing feedforward + PI drift compensation...")
         class MockHardware:
             def __init__(self):
-                self.speed = 12.5
+                self.speed = 10.0
+                self.last_commanded_speed = None
             def get_lift_angle(self): return 10
             def get_belt_speed(self): return self.speed
             def get_safeties(self): return {"top": False, "bottom": False, "left": False, "right": False, "emergency": False}
             def get_belt_direction(self): return True
-            def set_belt_speed(self, val): pass
+            def set_belt_speed(self, val):
+                self.last_commanded_speed = val
             def stop_belt(self): pass
             def stop_all(self): pass
 
         mock_hw = MockHardware()
         self.treadmill.hardware = mock_hw
-        # Set a speed and simulate a higher PV (so drift ratio is < 1.0)
+        self.treadmill.belt_acc = 100.0  # Fast acceleration for test
         self.treadmill.set_belt_speed(10)
-        for _ in range(250):
-            self.treadmill.update()
+        
+        # Advance update loop so ramp completes
+        self.treadmill.update()
+        sleep(0.15)
+        self.treadmill.update()
+        self.assertEqual(self.treadmill.current_speed_command, 10.0)
 
-        # After updates, drift should be calculated and clamped at 0.8
-        self.assertAlmostEqual(self.treadmill.drift, 0.8, places=1)
+        # Simulate small slip: PV is 9.5 km/h (error = 0.5 km/h <= seuil_accel = 1.0)
+        mock_hw.speed = 9.5
+        sleep(0.1)
+        self.treadmill.update()
 
-        # The compensated speed should be lower
-        self.assertLess(self.treadmill.compensated_belt_speed_SP, 10)
-        self.assertAlmostEqual(self.treadmill.compensated_belt_speed_SP, 10 * 0.8, places=1)
+        # Integrator should have accumulated positive error
+        self.assertGreater(self.treadmill.integrale_drift, 0.0)
 
-        # Now, simulate a PV that is lower than SP (so drift ratio is > 1.0)
-        mock_hw.speed = 8.3
-        for _ in range(450):
-            self.treadmill.update()
+        # Commanded speed should include feedforward (10.0) + kp * error (0.5 * 0.8 = 0.4) + integral
+        expected_speed = 10.0 + (0.5 * 0.8) + self.treadmill.integrale_drift
+        self.assertAlmostEqual(mock_hw.last_commanded_speed, expected_speed, places=2)
 
-        # Drift should be calculated and clamped at 1.2
-        self.assertAlmostEqual(self.treadmill.drift, 1.2, places=1)
-        self.assertAlmostEqual(self.treadmill.compensated_belt_speed_SP, 10 * 1.2, places=1)
+        # Test Dynamic Clamping: If integral exceeds max_correction, it should clamp to max_drift_pct (20% of 10 km/h = 2.0)
+        self.treadmill.integrale_drift = 5.0  # Artificially exceed clamping
+        sleep(0.05)
+        self.treadmill.update()
+        max_clamped = 10.0 * (self.treadmill.max_drift_pct / 100.0)
+        self.assertAlmostEqual(self.treadmill.integrale_drift, max_clamped, places=2)
+
+        # Test negative clamping
+        self.treadmill.integrale_drift = -5.0
+        sleep(0.05)
+        self.treadmill.update()
+        self.assertAlmostEqual(self.treadmill.integrale_drift, -max_clamped, places=2)
+
+        # Anti-Windup 1: Large error (> seuil_accel = 1.0 km/h) freezes integrator
+        integral_before = self.treadmill.integrale_drift
+        mock_hw.speed = 5.0  # error = 5.0 > 1.0
+        sleep(0.1)
+        self.treadmill.update()
+        self.assertEqual(self.treadmill.integrale_drift, integral_before)
+
+        # Anti-Windup 2: Ramping freezes integrator
+        self.treadmill.belt_acc = 1.0  # Slow acceleration
+        self.treadmill.set_belt_speed(20.0)  # Trigger ramp
+        mock_hw.speed = 9.5
+        sleep(0.1)
+        self.treadmill.update()
+        self.assertEqual(self.treadmill.integrale_drift, integral_before)
+
+        # Reset variables should clear integrator
+        self.treadmill.reset_variables()
+        self.assertEqual(self.treadmill.integrale_drift, 0.0)
         print("OK")
 
 
