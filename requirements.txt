@@ -2,6 +2,7 @@
 kivy
 kivy-garden
 kivy_garden.graph
+pygame-ce
 
 # Hardware & Configuration
 revpimodio2
