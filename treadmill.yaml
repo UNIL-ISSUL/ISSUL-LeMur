@@ -1,5 +1,6 @@
-BELT_ACC: 1.0 #acceleration in kmh/s
-max_drift_pct: 50
-belt_kp: 0.8
-belt_ki: 0.2
+BELT_ACC: 1.0 # acceleration in kmh/s
+max_drift_pct: 25 # Maximum drift compensation percentage allowed (default 25%)
+belt_kp: 0.0 # Proportional gain (0.0 to prevent footstrike fluctuation)
+drift_tau_s: 25.0 # Time constant for drift integral compensation in seconds (larger = smoother/slower)
+drift_filter_tau_s: 3.0 # Low-pass filter time constant for belt speed measurement in seconds
 default_surface: "steps-bars" #"belt" # belt or steps-bars

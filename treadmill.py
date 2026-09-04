@@ -118,11 +118,19 @@ class TreadmillController:
         self.log_queue = queue.Queue()
         self.log_thread = None
         self.stop_logging_thread = threading.Event()
-        # Belt drift compensation (PI controller)
-        self.max_drift_pct = config.get('max_drift_pct', 10)
-        self.kp = config.get('belt_kp', 0.8)
-        self.ki = config.get('belt_ki', 0.2)
+        # Belt drift compensation (slow integral controller + low-pass filter)
+        self.max_drift_pct = config.get('max_drift_pct', 25)
+        self.kp = config.get('belt_kp', 0.0)
+        self.drift_tau = config.get('drift_tau_s', None)
+        if self.drift_tau is not None and self.drift_tau > 0:
+            self.ki = 1.0 / self.drift_tau
+        else:
+            self.ki = config.get('belt_ki', 0.04)
+            self.drift_tau = 1.0 / self.ki if self.ki > 0 else 25.0
+        self.drift_filter_tau = config.get('drift_filter_tau_s', 3.0)
         self.integrale_drift = 0.0
+        self.belt_speed_PV_filtered = None
+        self.drift_pct = 0.0
         self.reset_variables()
 
     def _log_worker(self):
@@ -159,6 +167,7 @@ class TreadmillController:
             'distance_m': self.distance_m,
             'elevation_pos_m': self.elevation_pos_m,
             'elevation_neg_m': self.elevation_neg_m,
+            'drift_pct': round(self.drift_pct, 2),
             'event': event_name,
         }
         # Append to in-memory list
@@ -169,7 +178,7 @@ class TreadmillController:
         if self.event_file:
             # Check if the file is empty to write headers
             is_new_file = self.event_file.tell() == 0
-            fieldnames = ['datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'event']
+            fieldnames = ['datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event']
             writer = csv.DictWriter(self.event_file, fieldnames=fieldnames)
             if is_new_file:
                 writer.writeheader()
@@ -187,7 +196,7 @@ class TreadmillController:
         file_exists = os.path.exists(event_path)
         self.event_file = open(event_path, 'a', newline='')
         if not file_exists:
-            fieldnames=['datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'event']
+            fieldnames=['datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event']
             writer = csv.DictWriter(self.event_file, fieldnames=fieldnames)
             writer.writeheader()
             self.event_file.flush()
@@ -206,7 +215,7 @@ class TreadmillController:
         log_path = os.path.join(log_folder, f'{now_str}_{self.subject_name}_{self.test_name}-log.csv')
         self.log_file = open(log_path, 'w', newline='')
         self.log_writer = csv.DictWriter(self.log_file, fieldnames=[
-            'datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'event'
+            'datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event'
         ])
         self.log_writer.writeheader()
         # Start the logging thread
@@ -241,6 +250,8 @@ class TreadmillController:
         self.event_list = []
         self.update_counter = 0
         self.integrale_drift = 0.0
+        self.belt_speed_PV_filtered = None
+        self.drift_pct = 0.0
 
     def update(self):
         #update PV
@@ -290,7 +301,14 @@ class TreadmillController:
             delta_time = current_time - self.last_update_time
             
             if delta_time > 0:
-                # 1. RAMP LOGIC (Feedforward target speed)
+                # 1. Low-pass filter on measured belt speed (removes stride/foot contact oscillations)
+                if self.belt_speed_PV_filtered is None:
+                    self.belt_speed_PV_filtered = self.belt_speed_PV
+                else:
+                    alpha = delta_time / (self.drift_filter_tau + delta_time)
+                    self.belt_speed_PV_filtered += alpha * (self.belt_speed_PV - self.belt_speed_PV_filtered)
+
+                # 2. RAMP LOGIC (Feedforward target speed)
                 if self.current_speed_command != self.belt_speed_SP:
                     max_speed_change = self.belt_acc * delta_time
                     diff = self.belt_speed_SP - self.current_speed_command
@@ -299,30 +317,40 @@ class TreadmillController:
                     else:
                         self.current_speed_command += math.copysign(max_speed_change, diff)
 
-                # 2. PI CONTROLLER + ANTI-WINDUP (Slip correction)
-                erreur = self.current_speed_command - self.belt_speed_PV
-                seuil_accel = 1.0 # Speed difference threshold (km/h) to detect dynamic acceleration
+                # 3. SLOW INTEGRAL CONTROLLER + ANTI-WINDUP (Slip / Drift correction)
+                erreur = self.current_speed_command - self.belt_speed_PV_filtered
+                max_correction = self.current_speed_command * (self.max_drift_pct / 100.0)
                 
-                # Anti-Windup: Freeze integrator if the feedforward ramp is not finished or if error is too large
-                if abs(self.belt_speed_SP - self.current_speed_command) > 0.1 or abs(erreur) > seuil_accel:
-                    pass # Do not accumulate integral
-                else:
-                    # System is close to target, accumulate error to correct drift
+                # Anti-Windup: Freeze integrator during active feedforward ramping
+                is_ramping = abs(self.belt_speed_SP - self.current_speed_command) > 0.05
+                # Directional clamping anti-windup: do not accumulate further in saturated direction
+                is_saturated_high = (self.integrale_drift >= max_correction) and (erreur > 0)
+                is_saturated_low = (self.integrale_drift <= -max_correction) and (erreur < 0)
+
+                if not is_ramping and not (is_saturated_high or is_saturated_low):
+                    # Slow, smooth accumulation
                     self.integrale_drift += erreur * delta_time * self.ki
-                    
-                    # Dynamic Clamping: Limit the integral correction to a percentage of the current speed command
-                    max_correction = self.current_speed_command * (self.max_drift_pct / 100.0)
-                    self.integrale_drift = max(min(self.integrale_drift, max_correction), -max_correction)
+
+                # Always enforce clamping limits
+                self.integrale_drift = max(min(self.integrale_drift, max_correction), -max_correction)
                 
-                correction_pi = (erreur * self.kp) + self.integrale_drift
+                # Proportional correction on filtered error (if kp > 0, default 0)
+                correction_p = (erreur * self.kp) if self.kp > 0 else 0.0
+                correction_finale = correction_p + self.integrale_drift
                 
-                # 3. FINAL HARDWARE COMMAND
-                # Final command = Feedforward (theoretical ramp) + Trim (PI correction)
-                commande_finale = self.current_speed_command + correction_pi
+                # 4. FINAL HARDWARE COMMAND
+                # Final command = Feedforward (theoretical ramp) + Trim (slow integral drift correction)
+                commande_finale = self.current_speed_command + correction_finale
                 commande_finale = max(0.0, commande_finale) # Safety against unwanted reverse command
 
                 if self.hardware:
                     self.hardware.set_belt_speed(commande_finale)
+
+                # Calculate drift percentage (Option A: learned compensation percentage)
+                if self.current_speed_command > 0.1:
+                    self.drift_pct = (self.integrale_drift / self.current_speed_command) * 100.0
+                else:
+                    self.drift_pct = 0.0
             
                 #compute distance and elevation
                 self.distance_m += (self.belt_speed_PV * 1000 / 3600) * delta_time
@@ -356,6 +384,7 @@ class TreadmillController:
                     'distance_m': self.distance_m,
                     'elevation_pos_m': self.elevation_pos_m,
                     'elevation_neg_m': self.elevation_neg_m,
+                    'drift_pct': round(self.drift_pct, 2),
                     'event': event_str
                 }
                 self.log_queue.put(log_data)
@@ -374,7 +403,8 @@ class TreadmillController:
             "elevation_neg_m": self.elevation_neg_m,
             "elapsed_time": self.elapsed_time,
             "belt_direction": self.belt_direction,
-            "steps_active": self.steps_active
+            "steps_active": self.steps_active,
+            "drift_pct": self.drift_pct
         }
 
     def start(self, test_name="manual_test", subject_name="sujet"):

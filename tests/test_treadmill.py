@@ -102,7 +102,7 @@ class TestTreadmillController(unittest.TestCase):
 
 
     def test_drift_compensation(self):
-        print("Testing feedforward + PI drift compensation...")
+        print("Testing feedforward + slow integral drift compensation...")
         class MockHardware:
             def __init__(self):
                 self.speed = 10.0
@@ -127,17 +127,30 @@ class TestTreadmillController(unittest.TestCase):
         self.treadmill.update()
         self.assertEqual(self.treadmill.current_speed_command, 10.0)
 
-        # Simulate small slip: PV is 9.5 km/h (error = 0.5 km/h <= seuil_accel = 1.0)
+        # Simulate small slip: PV is 9.5 km/h
         mock_hw.speed = 9.5
         sleep(0.1)
-        self.treadmill.update()
+        status = self.treadmill.update()
 
         # Integrator should have accumulated positive error
         self.assertGreater(self.treadmill.integrale_drift, 0.0)
 
-        # Commanded speed should include feedforward (10.0) + kp * error (0.5 * 0.8 = 0.4) + integral
-        expected_speed = 10.0 + (0.5 * 0.8) + self.treadmill.integrale_drift
+        # With kp=0, commanded speed should be feedforward (10.0) + integral
+        expected_speed = 10.0 + self.treadmill.integrale_drift
         self.assertAlmostEqual(mock_hw.last_commanded_speed, expected_speed, places=2)
+
+        # Drift pct should be computed and available in status
+        expected_drift_pct = (self.treadmill.integrale_drift / 10.0) * 100.0
+        self.assertAlmostEqual(self.treadmill.drift_pct, expected_drift_pct, places=2)
+        self.assertIn('drift_pct', status)
+        self.assertAlmostEqual(status['drift_pct'], expected_drift_pct, places=2)
+
+        # Test that large error (> 1.0 km/h) DOES NOT freeze the integrator
+        integral_before_large_error = self.treadmill.integrale_drift
+        mock_hw.speed = 8.0  # Error = 2.0 km/h > 1.0 km/h
+        sleep(0.1)
+        self.treadmill.update()
+        self.assertGreater(self.treadmill.integrale_drift, integral_before_large_error)
 
         # Test Dynamic Clamping: If integral exceeds max_correction, it should clamp to max_drift_pct (20% of 10 km/h = 2.0)
         self.treadmill.integrale_drift = 5.0  # Artificially exceed clamping
@@ -152,24 +165,53 @@ class TestTreadmillController(unittest.TestCase):
         self.treadmill.update()
         self.assertAlmostEqual(self.treadmill.integrale_drift, -max_clamped, places=2)
 
-        # Anti-Windup 1: Large error (> seuil_accel = 1.0 km/h) freezes integrator
-        integral_before = self.treadmill.integrale_drift
-        mock_hw.speed = 5.0  # error = 5.0 > 1.0
-        sleep(0.1)
-        self.treadmill.update()
-        self.assertEqual(self.treadmill.integrale_drift, integral_before)
-
-        # Anti-Windup 2: Ramping freezes integrator
+        # Anti-Windup during ramping: Ramping actively freezes integrator
+        integral_before_ramp = self.treadmill.integrale_drift
         self.treadmill.belt_acc = 1.0  # Slow acceleration
         self.treadmill.set_belt_speed(20.0)  # Trigger ramp
         mock_hw.speed = 9.5
         sleep(0.1)
         self.treadmill.update()
-        self.assertEqual(self.treadmill.integrale_drift, integral_before)
+        self.assertEqual(self.treadmill.integrale_drift, integral_before_ramp)
 
-        # Reset variables should clear integrator
+        # Reset variables should clear integrator and drift_pct
         self.treadmill.reset_variables()
         self.assertEqual(self.treadmill.integrale_drift, 0.0)
+        self.assertEqual(self.treadmill.drift_pct, 0.0)
+        self.assertIsNone(self.treadmill.belt_speed_PV_filtered)
+        print("OK")
+
+    def test_speed_measurement_filter(self):
+        print("Testing low-pass filter on belt speed...")
+        class MockHardware:
+            def __init__(self):
+                self.speed = 10.0
+            def get_lift_angle(self): return 0
+            def get_belt_speed(self): return self.speed
+            def get_safeties(self): return {"top": False, "bottom": False, "left": False, "right": False, "emergency": False}
+            def get_belt_direction(self): return True
+            def set_belt_speed(self, val): pass
+            def stop_belt(self): pass
+            def stop_all(self): pass
+
+        mock_hw = MockHardware()
+        self.treadmill.hardware = mock_hw
+        self.treadmill.belt_acc = 100.0
+        self.treadmill.set_belt_speed(10.0)
+        self.treadmill.drift_filter_tau = 3.0
+
+        # Initial update establishes filter baseline
+        self.treadmill.update()
+        self.assertEqual(self.treadmill.belt_speed_PV_filtered, 10.0)
+
+        # Simulate foot contact oscillations (dip to 8.0 km/h for a brief 0.05s)
+        mock_hw.speed = 8.0
+        sleep(0.05)
+        self.treadmill.update()
+
+        # The filtered speed should reject the sharp dip (stay very close to 10.0 km/h, well above 9.5 km/h)
+        self.assertGreater(self.treadmill.belt_speed_PV_filtered, 9.5)
+        self.assertLess(self.treadmill.belt_speed_PV_filtered, 10.0)
         print("OK")
 
 

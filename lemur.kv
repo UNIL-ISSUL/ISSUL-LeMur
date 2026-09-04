@@ -133,6 +133,11 @@
         has_target : True
         font_size : root.font_size
     NumericDisplay:
+        name : 'Glissement'
+        unit : '%'
+        value : app.treadmill_status['drift_pct']
+        font_size : root.font_size
+    NumericDisplay:
         name : 'Dénivelé positif'
         unit : 'm'
         value : app.treadmill_status['elevation_pos_m']
