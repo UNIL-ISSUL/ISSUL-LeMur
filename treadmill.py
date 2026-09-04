@@ -348,7 +348,7 @@ class TreadmillController:
 
                 # Calculate drift percentage (Option A: learned compensation percentage)
                 if self.current_speed_command > 0.1:
-                    self.drift_pct = (self.integrale_drift / self.current_speed_command) * 100.0
+                    self.drift_pct = (correction_finale/ self.current_speed_command) * 100.0
                 else:
                     self.drift_pct = 0.0
             
