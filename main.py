@@ -5,6 +5,11 @@ Created on Wed Oct 13 09:42:51 2021
 @author: jparent1
 """
 import os
+import ast
+if not hasattr(ast, 'Str'):
+    class AstStrShim: pass
+    ast.Str = AstStrShim
+
 import subprocess
 import hardware
 
@@ -78,6 +83,7 @@ import hardware
 import treadmill
 from treadmill import compute_vertical_speed_mh, compute_belt_speed, compute_tilt
 from incremental_widget import IncrementalWidget
+from system_info_widget import SystemInfoWidget
 import math
 import time
 from time import strftime, localtime, gmtime, sleep
@@ -236,6 +242,7 @@ class LeMurApp(App):
 
         self.steps_active = treadmill.steps_active
         self.speed_text = "Vitesse marches" if self.steps_active else "Vitesse bande"
+        self.safety_consecutive_ticks = 0
 
         self.treadmill_status = treadmill.update()
 
@@ -244,8 +251,10 @@ class LeMurApp(App):
         self.screen_manager = self.root.ids.screen_manager
         self.manual_widget_ids = self.screen_manager.ids.manual_widget.ids
         self.incremental_widget = self.screen_manager.ids.incr_widget
+        self.system_info_widget = self.screen_manager.ids.system_info_widget
         #attach treadmill to widget
         self.incremental_widget.set_treadmill(self.treadmill)
+        self.system_info_widget.set_treadmill(self.treadmill)
         #attach update event
         Clock.schedule_interval(self.update_values, self.update_period)
         #update treadmill
@@ -283,15 +292,31 @@ class LeMurApp(App):
         #update treadmill status
         self.treadmill_status = self.treadmill.update()
         self.steps_active = self.treadmill_status.get("steps_active", False)
+
+        #update system info widget
+        if hasattr(self, 'system_info_widget') and self.system_info_widget:
+            self.system_info_widget.update_info()
         
-        #if top or bottom security active press stop button
-        if self.treadmill_status["safeties"]["top"] or self.treadmill_status["safeties"]["bottom"] :
-            #if treadmill is running toggle pause button to pause
+        # Optical safeties with 300ms debounce (3 cycles at 100ms) to filter lift vibrations / EMI
+        is_safety_active = self.treadmill_status["safeties"]["top"] or self.treadmill_status["safeties"]["bottom"]
+        if is_safety_active:
+            self.safety_consecutive_ticks += 1
+        else:
+            self.safety_consecutive_ticks = 0
+
+        if self.safety_consecutive_ticks >= 3:
+            # if treadmill is running toggle pause button to pause
             if self.treadmill.is_running():
+                active_sources = []
+                if self.treadmill_status["safeties"]["top"]:
+                    active_sources.append("avant/top")
+                if self.treadmill_status["safeties"]["bottom"]:
+                    active_sources.append("arrière/bottom")
+                Logger.warning(f"Main : Sécurité optique active ({', '.join(active_sources)}) pendant >= 300ms -> Pause du tapis")
                 self.root.ids.controller.ids.start.state = 'normal'
                 self.root.ids.controller.ids.pause.state = 'down'
                 self.treadmill.pause()
-            #else treadmil is already stopped nothing to do
+            # else treadmill is already stopped/paused nothing to do
 
     def start(self, instance) :
         test_name = "manual_test"

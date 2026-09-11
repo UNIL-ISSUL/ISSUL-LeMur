@@ -88,8 +88,15 @@ class revPI() :
     
     #latch the selected output
     def latch_output(self,io_name,io_value) :
-        #invert io value
-        self.rpi.io[io_name].value = not io_value
+        # Explicit latch: belt_start returns to False (0), belt_stop returns to True (1)
+        if io_name == "belt_start":
+            new_val = False
+        elif io_name == "belt_stop":
+            new_val = True
+        else:
+            new_val = not io_value
+        self.rpi.io[io_name].value = new_val
+        Logger.info(f"Hardware: Latch pulse completed for {io_name}: {io_value} -> {new_val}")
     
     #desactivate the lift PID
     def stop_lift(self,msg="") :
@@ -193,6 +200,112 @@ class revPI() :
     #Set steps status
     def set_steps(self,active:bool) :
         self.rpi.io.use_steps.value = active
+
+    def get_io_value(self, io_name, default=None):
+        """Safely retrieve value of an IO object by name."""
+        if hasattr(self.rpi.io, io_name):
+            try:
+                return getattr(self.rpi.io, io_name).value
+            except Exception:
+                return default
+        return default
+
+    def set_io_value(self, io_name, value):
+        """Safely write value to an IO object by name."""
+        if hasattr(self.rpi.io, io_name):
+            try:
+                getattr(self.rpi.io, io_name).value = value
+                return True
+            except Exception as e:
+                Logger.warning(f"Hardware: Failed to set {io_name} to {value}: {e}")
+                return False
+        return False
+
+    def reset_modbus(self):
+        """Pulsed reset of Modbus master and action error flags."""
+        resets = ['Master_Status_Reset', 'Action_Status_Reset_1', 'Action_Status_Reset_2', 'Action_Status_Reset_3']
+        count = 0
+        for name in resets:
+            if hasattr(self.rpi.io, name):
+                try:
+                    getattr(self.rpi.io, name).value = 1
+                    count += 1
+                except Exception as e:
+                    Logger.warning(f"Hardware: Error resetting {name}: {e}")
+        Logger.info(f"Hardware: Reset Modbus statuses sent ({count} flags triggered)")
+        return count
+
+    def get_system_info(self):
+        """Returns comprehensive diagnostic dictionary of all hardware inputs, outputs, and Modbus registers."""
+        outputs = {
+            "belt_start": bool(self.get_io_value("belt_start", False)),
+            "belt_stop": bool(self.get_io_value("belt_stop", False)),
+            "belt_dir": bool(self.get_io_value("belt_dir", True)),
+            "use_steps": bool(self.get_io_value("use_steps", False)),
+        }
+        inputs = {
+            "secu_right": bool(self.get_io_value("secu_right", False)),
+            "secu_left": bool(self.get_io_value("secu_left", False)),
+            "secu_front": bool(self.get_io_value("secu_front", False)),
+            "secu_back": bool(self.get_io_value("secu_back", False)),
+            "secu_front_back": bool(self.get_io_value("secu_front_back", False)),
+            "secu_emergency": bool(self.get_io_value("secu_emergency", False)),
+        }
+        sp_0 = self.get_io_value("belt_speed_SP_0", 0)
+        sp_1 = self.get_io_value("belt_speed_SP_1", 0)
+        raw_val = merge_registers(sp_0 if sp_0 is not None else 0, sp_1 if sp_1 is not None else 0)
+        calc_hz = round(raw_val / 100.0, 2)
+        
+        encoder_raw = self.get_io_value("encoder_feedback_speed", 0)
+        encoder_kmh = round((encoder_raw or 0) * 3.6 / 1000.0, 2)
+
+        modbus = {
+            "belt_speed_SP_0": sp_0,
+            "belt_speed_SP_1": sp_1,
+            "frequency_sent_hz": calc_hz,
+            "encoder_feedback_speed_mms": encoder_raw,
+            "encoder_feedback_speed_kmh": encoder_kmh,
+            "belt_current_frequency": self.get_io_value("belt_current_frequency", self.get_io_value("belt_out_frequency", None)),
+            "lift_angle_SP": self.get_io_value("lift_angle_SP", 0),
+            "lift_angle_current": self.get_io_value("lift_angle_current", 0),
+            "pid_enable": self.get_io_value("pid_enable", 0),
+            "Modbus_Master_Status": self.get_io_value("Modbus_Master_Status", 0),
+            "Modbus_Action_Status_1": self.get_io_value("Modbus_Action_Status_1", 0),
+            "Modbus_Action_Status_2": self.get_io_value("Modbus_Action_Status_2", 0),
+            "Modbus_Action_Status_3": self.get_io_value("Modbus_Action_Status_3", None),
+        }
+        
+        all_ios = []
+        try:
+            for dev in self.rpi.device:
+                dev_name = getattr(dev, 'name', f"Pos {getattr(dev, 'position', '?')}")
+                for io in dev:
+                    io_type_str = "MEM"
+                    if hasattr(io, 'type'):
+                        if io.type == revpimodio2.INP:
+                            io_type_str = "INP"
+                        elif io.type == revpimodio2.OUT:
+                            io_type_str = "OUT"
+                    all_ios.append({
+                        "device": str(dev_name),
+                        "name": str(io.name),
+                        "value": io.value,
+                        "type": io_type_str,
+                        "address": getattr(io, 'address', 0),
+                        "length": getattr(io, 'length', 1),
+                    })
+        except Exception as e:
+            Logger.debug(f"Hardware: Could not enumerate all IOs: {e}")
+
+        return {
+            "connected": True,
+            "cycletime_ms": getattr(self.rpi, 'cycletime', config.get('CYCLETIME_MS', 100)),
+            "ioerrors": getattr(self.rpi, 'ioerrors', 0),
+            "outputs": outputs,
+            "inputs": inputs,
+            "modbus": modbus,
+            "all_ios": all_ios,
+        }
 
 if __name__ == '__main__':
     import sys, select, os

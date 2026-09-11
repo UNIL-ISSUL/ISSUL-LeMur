@@ -214,6 +214,43 @@ class TestTreadmillController(unittest.TestCase):
         self.assertLess(self.treadmill.belt_speed_PV_filtered, 10.0)
         print("OK")
 
+    def test_encoder_glitch_rejection(self):
+        print("Testing encoder glitch rejection...")
+        class MockHardware:
+            def __init__(self):
+                self.speed = 5.0
+            def get_lift_angle(self): return 0
+            def get_belt_speed(self): return self.speed
+            def get_safeties(self): return {"top": False, "bottom": False, "left": False, "right": False, "emergency": False}
+            def get_belt_direction(self): return True
+            def set_belt_speed(self, val): pass
+            def stop_belt(self): pass
+            def stop_all(self): pass
+
+        mock_hw = MockHardware()
+        self.treadmill.hardware = mock_hw
+        self.treadmill.set_belt_speed(5.0)
+        self.treadmill.update()
+        self.assertEqual(self.treadmill.belt_speed_PV, 5.0)
+
+        # Inject an aberrant spike (50.0 km/h) representing electrical EMI noise on encoder line
+        mock_hw.speed = 50.0
+        self.treadmill.update()
+        # The spike should be rejected and held at previous valid speed (5.0 km/h)
+        self.assertEqual(self.treadmill.belt_speed_PV, 5.0)
+        print("OK")
+
+    def test_belt_speed_cmd_telemetry(self):
+        print("Testing belt_speed_CMD telemetry...")
+        self.treadmill.belt_acc = 100.0
+        self.treadmill.set_belt_speed(6.0)
+        sleep(0.05)
+        status = self.treadmill.update()
+        self.assertIn("belt_speed_CMD", status)
+        self.assertGreater(status["belt_speed_CMD"], 0.0)
+        self.assertEqual(status["belt_speed_CMD"], self.treadmill.commande_finale)
+        print("OK")
+
 
 if __name__ == '__main__':
     unittest.main()

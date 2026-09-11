@@ -242,7 +242,7 @@
         name : 'Inclinaison'
         unit : '°'
         min_value : 0   #limité par le l'axe des poulies des courroies
-        max_value : 88  #limité par le l'axe des poulies des courroies
+        max_value : 90  #limité par le l'axe des poulies des courroies
         auto_update : False
     
     NumericInput :
@@ -282,6 +282,11 @@
         name: "incremental_tab"
         IncrementalWidget:
             id: incr_widget
+
+    Screen:
+        name: "system_info_tab"
+        SystemInfoWidget:
+            id: system_info_widget
 
 # Séparateur visuel
 <Separator@Widget>:
@@ -324,6 +329,12 @@ BoxLayout :
                 text: "Test incrémental"
                 group: "tabs"
                 on_release: screen_manager.current = "incremental_tab"
+
+            ToggleButton:
+                allow_no_selection : False
+                text: "Infos système"
+                group: "tabs"
+                on_release: screen_manager.current = "system_info_tab"
         # --
         Separator:
             orientation: 'horizontal'

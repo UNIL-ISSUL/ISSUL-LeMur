@@ -38,6 +38,12 @@ def add_noise(value, noise_level=0.01):
     noise = noise_level * value * (2 * (0.5 - random()))
     return float(value + noise)
 
+def split_value(value):
+    val_int = int(round(value))
+    value_hsb = (val_int >> 16) & 0xFFFF
+    value_lsb = val_int & 0xFFFF
+    return value_hsb, value_lsb
+
 
 import os
 import csv
@@ -131,7 +137,31 @@ class TreadmillController:
         self.integrale_drift = 0.0
         self.belt_speed_PV_filtered = None
         self.drift_pct = 0.0
+        # Diagnostic tracking and event history
+        self.diagnostic_log = collections.deque(maxlen=100)
+        self._last_diagnostic_states = {}
+        if self.hardware and hasattr(self.hardware, 'get_io_value'):
+            self._last_diagnostic_states["belt_stop"] = bool(self.hardware.get_io_value("belt_stop", False))
+            self._last_diagnostic_states["belt_start"] = bool(self.hardware.get_io_value("belt_start", False))
+            self._last_diagnostic_states["Modbus_Action_Status_1"] = self.hardware.get_io_value("Modbus_Action_Status_1", 0)
+        self.log_diagnostic("TreadmillController initialisé", level="info")
         self.reset_variables()
+
+    def log_diagnostic(self, msg, level="info"):
+        """Record a diagnostic event for real-time telemetry display."""
+        now_str = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+        entry = {
+            "time": now_str,
+            "msg": msg,
+            "level": level
+        }
+        self.diagnostic_log.appendleft(entry)
+        if level == "warning":
+            Logger.warning(f"Treadmill Diag: {msg}")
+        elif level == "error":
+            Logger.error(f"Treadmill Diag: {msg}")
+        else:
+            Logger.info(f"Treadmill Diag: {msg}")
 
     def _log_worker(self):
         """Worker thread for writing logs to file."""
@@ -156,9 +186,10 @@ class TreadmillController:
         """Record an event with the current elapsed time and optional name."""
         now = datetime.now()
         event = {
-            'datetime': now.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
+            'datetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
             'time': self.elapsed_time,
             'belt_speed_SP': self.belt_speed_SP,
+            'belt_speed_CMD': round(getattr(self, 'commande_finale', 0.0), 3),
             'belt_speed_PV': self.belt_speed_PV,
             'lift_angle_SP': self.lift_angle_SP,
             'lift_angle_PV': self.lift_angle_PV,
@@ -178,7 +209,7 @@ class TreadmillController:
         if self.event_file:
             # Check if the file is empty to write headers
             is_new_file = self.event_file.tell() == 0
-            fieldnames = ['datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event']
+            fieldnames = ['datetime', 'time', 'belt_speed_SP', 'belt_speed_CMD', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event']
             writer = csv.DictWriter(self.event_file, fieldnames=fieldnames)
             if is_new_file:
                 writer.writeheader()
@@ -196,7 +227,7 @@ class TreadmillController:
         file_exists = os.path.exists(event_path)
         self.event_file = open(event_path, 'a', newline='')
         if not file_exists:
-            fieldnames=['datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event']
+            fieldnames=['datetime', 'time', 'belt_speed_SP', 'belt_speed_CMD', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event']
             writer = csv.DictWriter(self.event_file, fieldnames=fieldnames)
             writer.writeheader()
             self.event_file.flush()
@@ -215,7 +246,7 @@ class TreadmillController:
         log_path = os.path.join(log_folder, f'{now_str}_{self.subject_name}_{self.test_name}-log.csv')
         self.log_file = open(log_path, 'w', newline='')
         self.log_writer = csv.DictWriter(self.log_file, fieldnames=[
-            'datetime', 'time', 'belt_speed_SP', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event'
+            'datetime', 'time', 'belt_speed_SP', 'belt_speed_CMD', 'belt_speed_PV', 'lift_angle_SP', 'lift_angle_PV', 'vertical_speed_SP', 'vertical_speed_PV', 'distance_m', 'elevation_pos_m', 'elevation_neg_m', 'drift_pct', 'event'
         ])
         self.log_writer.writeheader()
         # Start the logging thread
@@ -246,6 +277,9 @@ class TreadmillController:
         self.elapsed_pause_time = 0
         self.last_update_time = 0
         self.current_speed_command = 0
+        self.commande_finale = 0.0
+        self._stall_warning_counter = 0
+        self._last_raw_speed = None
         self.treadmill_points = collections.deque(maxlen=16200) # 90 minutes of data at 3Hz
         self.event_list = []
         self.update_counter = 0
@@ -257,9 +291,43 @@ class TreadmillController:
         #update PV
         if self.hardware:
             self.lift_angle_PV = self.hardware.get_lift_angle()
-            self.belt_speed_PV = self.hardware.get_belt_speed()
+            raw_speed = self.hardware.get_belt_speed()
+            # Glitch filter on raw encoder speed (max physically plausible acceleration < 5.0 km/h in 100ms)
+            if self.is_running() and self._last_raw_speed is not None:
+                if abs(raw_speed - self._last_raw_speed) > 5.0:
+                    Logger.warning(f"Treadmill: Glitch encodeur aberrant ignoré: {raw_speed:.2f} km/h (conservé: {self._last_raw_speed:.2f} km/h)")
+                    raw_speed = self._last_raw_speed
+            self._last_raw_speed = raw_speed
+            self.belt_speed_PV = raw_speed
             self.safeties = self.hardware.get_safeties()
             self.belt_direction = self.hardware.get_belt_direction()
+
+            # Diagnostic IO transition tracking
+            if hasattr(self.hardware, 'get_io_value'):
+                curr_stop = bool(self.hardware.get_io_value("belt_stop", False))
+                prev_stop = self._last_diagnostic_states.get("belt_stop")
+                if prev_stop is not None and prev_stop != curr_stop:
+                    self.log_diagnostic(
+                        f"Sortie belt_stop: {prev_stop} -> {curr_stop} ({'RUN Permis' if curr_stop else 'ARRÊT Actif / Coupure'})",
+                        level="warning" if not curr_stop else "info"
+                    )
+                self._last_diagnostic_states["belt_stop"] = curr_stop
+
+                curr_start = bool(self.hardware.get_io_value("belt_start", False))
+                prev_start = self._last_diagnostic_states.get("belt_start")
+                if prev_start is not None and prev_start != curr_start:
+                    self.log_diagnostic(
+                        f"Sortie belt_start: {prev_start} -> {curr_start} ({'Impulsion Start' if curr_start else 'Fin impulsion'})",
+                        level="info"
+                    )
+                self._last_diagnostic_states["belt_start"] = curr_start
+
+                curr_m1 = self.hardware.get_io_value("Modbus_Action_Status_1", 0)
+                prev_m1 = self._last_diagnostic_states.get("Modbus_Action_Status_1")
+                if prev_m1 is not None and prev_m1 != curr_m1:
+                    lvl = "error" if (curr_m1 and curr_m1 > 0) else "info"
+                    self.log_diagnostic(f"Modbus Action 1 statut: {prev_m1} -> {curr_m1}", level=lvl)
+                self._last_diagnostic_states["Modbus_Action_Status_1"] = curr_m1
         #When there is no hardware : PV set to setpoint and 1% of random noise
         else:
             self.lift_angle_PV = add_noise(self.lift_angle_SP, noise_level=0.001)
@@ -342,9 +410,24 @@ class TreadmillController:
                 # Final command = Feedforward (theoretical ramp) + Trim (slow integral drift correction)
                 commande_finale = self.current_speed_command + correction_finale
                 commande_finale = max(0.0, commande_finale) # Safety against unwanted reverse command
+                self.commande_finale = commande_finale
 
                 if self.hardware:
                     self.hardware.set_belt_speed(commande_finale)
+
+                # Diagnostic check: command active (> 0.5 km/h) but belt stationary (PV < 0.1 km/h) for > 2 seconds
+                if self.current_speed_command > 0.5 and self.belt_speed_PV < 0.1:
+                    self._stall_warning_counter += 1
+                    if self._stall_warning_counter == 20: # 20 ticks * 0.1s = 2.0s
+                        msg = (
+                            f"ALERTE DÉCROCHAGE: Tapis commandé (SP={self.belt_speed_SP:.2f}, "
+                            f"CMD={commande_finale:.2f} km/h, drift={self.drift_pct:.1f}%) "
+                            f"mais bande immobile (PV={self.belt_speed_PV:.2f} km/h) ! Variateur désenclenché ou calage ?"
+                        )
+                        Logger.warning(f"Treadmill DIAGNOSTIC: {msg}")
+                        self.log_diagnostic(msg, level="warning")
+                else:
+                    self._stall_warning_counter = 0
 
                 # Calculate drift percentage (Option A: learned compensation percentage)
                 if self.current_speed_command > 0.1:
@@ -376,6 +459,7 @@ class TreadmillController:
                     'datetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
                     'time': self.elapsed_time,
                     'belt_speed_SP': self.belt_speed_SP,
+                    'belt_speed_CMD': round(self.commande_finale, 3),
                     'belt_speed_PV': self.belt_speed_PV,
                     'lift_angle_SP': self.lift_angle_SP,
                     'lift_angle_PV': self.lift_angle_PV,
@@ -396,6 +480,7 @@ class TreadmillController:
             "vertical_speed_PV": self.vertical_speed_PV,
             "lift_angle_SP": float(self.lift_angle_SP),
             "belt_speed_SP": float(self.belt_speed_SP),
+            "belt_speed_CMD": float(self.commande_finale),
             "vertical_speed_SP": float(compute_vertical_speed_mh(self.lift_angle_SP,self.belt_speed_SP)),
             "safeties": self.safeties,
             "distance_m": self.distance_m,
@@ -417,6 +502,7 @@ class TreadmillController:
             if self.hardware:
                 self.hardware.start_belt()
             Logger.info(f"Treadmill: Starting at {self.start_time}")
+            self.log_diagnostic(f"START tapis (test={test_name}, sujet={subject_name}, consigne={self.belt_speed_SP:.2f} km/h)", level="info")
             # Open log and event files
             self._open_log_file()
             self._open_event_file()
@@ -429,6 +515,7 @@ class TreadmillController:
             if self.hardware:
                 self.hardware.start_belt()
             Logger.info(f"Treadmill: Resumed at {time()}")
+            self.log_diagnostic("RESUME tapis après pause", level="info")
             #Write resume event
             self.record_event('resume')
 
@@ -440,6 +527,7 @@ class TreadmillController:
             if self.hardware:
                 self.hardware.stop_belt()
             Logger.info(f"Treadmill: Paused at {self.pause_time}")
+            self.log_diagnostic("PAUSE tapis demandée", level="warning")
             self.record_event('pause')
 
     def stop(self):
@@ -449,6 +537,7 @@ class TreadmillController:
         if self.hardware:
             self.hardware.stop_belt()
         Logger.info(f"Treadmill: Stopped at {time()}")
+        self.log_diagnostic("STOP tapis demandé", level="info")
         self.record_event('stop')
         self._close_log_file()
         self._close_event_file()
@@ -522,3 +611,99 @@ class TreadmillController:
             self.hardware.stop_all()
             self.hardware.set_belt_speed(0)
         Logger.info(f"Treadmill: Shutdown at {time()}")
+
+    def get_system_info(self):
+        """Returns hardware system info enriched with controller state and diagnostic log."""
+        if self.hardware and hasattr(self.hardware, 'get_system_info'):
+            info = self.hardware.get_system_info()
+        else:
+            # Simulated telemetry on PC
+            cmd_val = round(self.commande_finale, 2)
+            calc_val = round(cmd_val * 100 / 40 * 1.8 * 1.025 * 100)
+            hsb, lsb = split_value(calc_val)
+            info = {
+                "connected": False,
+                "cycletime_ms": 100,
+                "ioerrors": 0,
+                "outputs": {
+                    "belt_start": False,
+                    "belt_stop": bool(self.running and not self.paused),
+                    "belt_dir": bool(self.belt_direction),
+                    "use_steps": bool(self.steps_active),
+                },
+                "inputs": {
+                    "secu_right": False,
+                    "secu_left": False,
+                    "secu_front": bool(self.safeties.get("top", False)),
+                    "secu_back": bool(self.safeties.get("bottom", False)),
+                    "secu_front_back": False,
+                    "secu_emergency": False,
+                },
+                "modbus": {
+                    "belt_speed_SP_0": hsb,
+                    "belt_speed_SP_1": lsb,
+                    "frequency_sent_hz": round(calc_val / 100.0, 2),
+                    "encoder_feedback_speed_mms": round(self.belt_speed_PV * 1000 / 3.6),
+                    "encoder_feedback_speed_kmh": round(self.belt_speed_PV, 2),
+                    "belt_current_frequency": round(calc_val / 100.0, 2),
+                    "lift_angle_SP": round(self.lift_angle_SP * 100),
+                    "lift_angle_current": round(self.lift_angle_PV * 100),
+                    "pid_enable": 1,
+                    "Modbus_Master_Status": 0,
+                    "Modbus_Action_Status_1": 0,
+                    "Modbus_Action_Status_2": 0,
+                    "Modbus_Action_Status_3": 0,
+                },
+                "all_ios": [
+                    {"device": "Simu DIO", "name": "belt_start", "value": 0, "type": "OUT", "address": 0, "length": 1},
+                    {"device": "Simu DIO", "name": "belt_stop", "value": 1 if (self.running and not self.paused) else 0, "type": "OUT", "address": 1, "length": 1},
+                    {"device": "Simu DIO", "name": "belt_dir", "value": 1 if self.belt_direction else 0, "type": "OUT", "address": 2, "length": 1},
+                    {"device": "Simu DIO", "name": "use_steps", "value": 1 if self.steps_active else 0, "type": "OUT", "address": 3, "length": 1},
+                    {"device": "Simu DIO", "name": "secu_front", "value": 0, "type": "INP", "address": 4, "length": 1},
+                    {"device": "Simu DIO", "name": "secu_back", "value": 0, "type": "INP", "address": 5, "length": 1},
+                    {"device": "Simu DIO", "name": "secu_left", "value": 0, "type": "INP", "address": 6, "length": 1},
+                    {"device": "Simu DIO", "name": "secu_right", "value": 0, "type": "INP", "address": 7, "length": 1},
+                    {"device": "Simu DIO", "name": "secu_emergency", "value": 0, "type": "INP", "address": 8, "length": 1},
+                    {"device": "Simu Modbus", "name": "belt_speed_SP_0", "value": hsb, "type": "OUT", "address": 100, "length": 2},
+                    {"device": "Simu Modbus", "name": "belt_speed_SP_1", "value": lsb, "type": "OUT", "address": 102, "length": 2},
+                    {"device": "Simu Modbus", "name": "encoder_feedback_speed", "value": round(self.belt_speed_PV * 1000 / 3.6), "type": "INP", "address": 104, "length": 2},
+                    {"device": "Simu Modbus", "name": "Modbus_Master_Status", "value": 0, "type": "INP", "address": 106, "length": 2},
+                    {"device": "Simu Modbus", "name": "Modbus_Action_Status_1", "value": 0, "type": "INP", "address": 108, "length": 2},
+                    {"device": "Simu Modbus", "name": "Modbus_Action_Status_2", "value": 0, "type": "INP", "address": 110, "length": 2},
+                ]
+            }
+
+        info["controller"] = {
+            "running": self.running,
+            "paused": self.paused,
+            "belt_speed_SP": self.belt_speed_SP,
+            "belt_speed_CMD": round(self.commande_finale, 3),
+            "belt_speed_PV": round(self.belt_speed_PV, 3),
+            "drift_pct": round(self.drift_pct, 2),
+            "stall_warning": self._stall_warning_counter >= 10,
+        }
+        info["diagnostic_log"] = list(self.diagnostic_log)
+        return info
+
+    def reset_modbus(self):
+        """Send reset pulse to Modbus error flags."""
+        if self.hardware and hasattr(self.hardware, 'reset_modbus'):
+            count = self.hardware.reset_modbus()
+            self.log_diagnostic(f"Réinitialisation Modbus exécutée ({count} drapeaux réinitialisés)", level="info")
+            return count
+        else:
+            self.log_diagnostic("Réinitialisation Modbus (mode simulation)", level="info")
+            return 0
+
+    def pulse_start(self):
+        """Send a manual start pulse to the VFD."""
+        if self.hardware and hasattr(self.hardware, 'start_belt'):
+            self.hardware.start_belt("Bouton impulsion start diagnostic")
+            self.log_diagnostic("Impulsion START envoyée au variateur", level="info")
+        else:
+            self.log_diagnostic("Impulsion START simulée envoyée", level="info")
+
+    def clear_diagnostic_log(self):
+        """Clear the diagnostic event log."""
+        self.diagnostic_log.clear()
+        self.log_diagnostic("Journal diagnostic effacé", level="info")
