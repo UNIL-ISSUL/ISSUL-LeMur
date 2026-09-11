@@ -89,6 +89,7 @@
 
 
 #:import timedelta datetime.timedelta
+#:import NoTransition kivy.uix.screenmanager.NoTransition
 
 <NumericDisplay>
     text: root.name +' : '+ "{:.2f}".format(root.value) +' '+ root.unit if not root.has_target else root.name +' : '+ "{:.2f}".format(root.value) + ' / ' + "{:.2f}".format(root.target) + '  ' + root.unit  
@@ -272,6 +273,7 @@
 
 <MainScreenManager>:
     id: screen_manager
+    transition: NoTransition()
 
     Screen:
         name: "manual_tab"

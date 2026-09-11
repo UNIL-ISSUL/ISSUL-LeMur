@@ -9,6 +9,7 @@ from pathlib import Path
 from kivy.logger import Logger
 import yaml
 import threading
+import time
 
 #utils function
 def is_raspberry_pi() -> bool:
@@ -225,13 +226,27 @@ class revPI() :
         """Pulsed reset of Modbus master and action error flags."""
         resets = ['Master_Status_Reset', 'Action_Status_Reset_1', 'Action_Status_Reset_2', 'Action_Status_Reset_3']
         count = 0
+        triggered = []
         for name in resets:
             if hasattr(self.rpi.io, name):
                 try:
                     getattr(self.rpi.io, name).value = 1
                     count += 1
+                    triggered.append(name)
                 except Exception as e:
                     Logger.warning(f"Hardware: Error resetting {name}: {e}")
+
+        # Schedule return to 0 after 150ms so next reset can re-trigger on rising edge
+        def _clear_resets():
+            time.sleep(0.15)
+            for name in triggered:
+                try:
+                    if hasattr(self.rpi.io, name):
+                        getattr(self.rpi.io, name).value = 0
+                except Exception:
+                    pass
+        threading.Thread(target=_clear_resets, daemon=True).start()
+
         Logger.info(f"Hardware: Reset Modbus statuses sent ({count} flags triggered)")
         return count
 

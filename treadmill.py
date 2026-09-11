@@ -45,6 +45,39 @@ def split_value(value):
     return value_hsb, value_lsb
 
 
+def describe_modbus_status(code):
+    """Return a human-readable interpretation of Kunbus RevPi Modbus Action Status code."""
+    if code is None:
+        return "Non configuré"
+    try:
+        c = int(code)
+    except (ValueError, TypeError):
+        return str(code)
+
+    if c == 0:
+        return "OK"
+    elif c == 110:
+        return "Timeout réponse variateur (110)"
+    elif c == 17:
+        return "Liaison série / port occupé (17)"
+    elif c == 1:
+        return "Fonction non supportée (1)"
+    elif c == 2:
+        return "Adresse registre invalide (2)"
+    elif c == 3:
+        return "Valeur registre invalide (3)"
+    elif c == 4:
+        return "Défaut matériel esclave (4)"
+    elif c == 6:
+        return "Esclave occupé (6)"
+    elif c == 104:
+        return "Connexion réinitialisée (104)"
+    elif c == 255:
+        return "Erreur communication générique (255)"
+    else:
+        return f"Défaut communication ({c})"
+
+
 import os
 import csv
 from datetime import datetime
@@ -140,6 +173,10 @@ class TreadmillController:
         # Diagnostic tracking and event history
         self.diagnostic_log = collections.deque(maxlen=100)
         self._last_diagnostic_states = {}
+        self.modbus_auto_recovery_enabled = True
+        self.modbus_auto_reset_count = 0
+        self._last_modbus_auto_reset_time = 0.0
+        self._modbus_error_streak = 0
         if self.hardware and hasattr(self.hardware, 'get_io_value'):
             self._last_diagnostic_states["belt_stop"] = bool(self.hardware.get_io_value("belt_stop", False))
             self._last_diagnostic_states["belt_start"] = bool(self.hardware.get_io_value("belt_start", False))
@@ -326,8 +363,27 @@ class TreadmillController:
                 prev_m1 = self._last_diagnostic_states.get("Modbus_Action_Status_1")
                 if prev_m1 is not None and prev_m1 != curr_m1:
                     lvl = "error" if (curr_m1 and curr_m1 > 0) else "info"
-                    self.log_diagnostic(f"Modbus Action 1 statut: {prev_m1} -> {curr_m1}", level=lvl)
+                    desc_curr = describe_modbus_status(curr_m1)
+                    self.log_diagnostic(f"Modbus Action 1: {prev_m1} -> {curr_m1} ({desc_curr})", level=lvl)
                 self._last_diagnostic_states["Modbus_Action_Status_1"] = curr_m1
+
+                # Modbus Auto-Recovery Watchdog
+                if curr_m1 is not None and curr_m1 > 0:
+                    self._modbus_error_streak += 1
+                    now_ts = time()
+                    if (self.modbus_auto_recovery_enabled and 
+                        self.running and not self.paused and 
+                        (now_ts - self._last_modbus_auto_reset_time) >= 1.5):
+                        self._last_modbus_auto_reset_time = now_ts
+                        self.modbus_auto_reset_count += 1
+                        self.reset_modbus()
+                        desc = describe_modbus_status(curr_m1)
+                        self.log_diagnostic(
+                            f"[AUTO-RÉCUPÉRATION] Acquittement Modbus auto envoyé (code {curr_m1}: {desc})",
+                            level="warning"
+                        )
+                else:
+                    self._modbus_error_streak = 0
         #When there is no hardware : PV set to setpoint and 1% of random noise
         else:
             self.lift_angle_PV = add_noise(self.lift_angle_SP, noise_level=0.001)
@@ -681,9 +737,22 @@ class TreadmillController:
             "belt_speed_PV": round(self.belt_speed_PV, 3),
             "drift_pct": round(self.drift_pct, 2),
             "stall_warning": self._stall_warning_counter >= 10,
+            "modbus_auto_recovery_enabled": self.modbus_auto_recovery_enabled,
+            "modbus_auto_reset_count": self.modbus_auto_reset_count,
         }
         info["diagnostic_log"] = list(self.diagnostic_log)
         return info
+
+    def set_modbus_auto_recovery(self, enabled: bool):
+        """Enable or disable automatic Modbus error recovery watchdog."""
+        self.modbus_auto_recovery_enabled = bool(enabled)
+        state_str = "activée" if self.modbus_auto_recovery_enabled else "désactivée"
+        self.log_diagnostic(f"Auto-récupération Modbus {state_str}", level="info")
+
+    def toggle_modbus_auto_recovery(self):
+        """Toggle automatic Modbus recovery watchdog state."""
+        self.set_modbus_auto_recovery(not self.modbus_auto_recovery_enabled)
+        return self.modbus_auto_recovery_enabled
 
     def reset_modbus(self):
         """Send reset pulse to Modbus error flags."""

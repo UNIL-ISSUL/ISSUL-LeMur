@@ -17,6 +17,7 @@ from kivy.metrics import dp, sp
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.clock import Clock
+from treadmill import describe_modbus_status
 
 class SystemInfoWidget(BoxLayout):
     treadmill = ObjectProperty(None)
@@ -58,10 +59,16 @@ class SystemInfoWidget(BoxLayout):
     modbus_act1_text = StringProperty("0 (OK)")
     modbus_act1_bg = ColorProperty([0.2, 0.5, 0.2, 1])
     modbus_act2_text = StringProperty("0 (OK)")
+    modbus_act3_text = StringProperty("--")
     lift_sp_text = StringProperty("0.0°")
     lift_pv_text = StringProperty("0.0°")
     pid_enable_text = StringProperty("0")
     drift_pct_text = StringProperty("0.0 %")
+
+    # Modbus Auto-Recovery Watchdog
+    modbus_auto_recovery_active = BooleanProperty(True)
+    modbus_auto_recovery_bg = ColorProperty([0.15, 0.6, 0.25, 1])
+    modbus_auto_reset_count_text = StringProperty("0")
 
     # Active view mode: 'summary' or 'explorer'
     view_mode = StringProperty('summary')
@@ -79,6 +86,8 @@ class SystemInfoWidget(BoxLayout):
 
     def switch_view(self, mode):
         self.view_mode = mode
+        if hasattr(self.ids, 'sys_sm'):
+            self.ids.sys_sm.current = mode
         if mode == 'explorer':
             Clock.schedule_once(lambda dt: self.refresh_explorer(), 0.05)
 
@@ -89,6 +98,11 @@ class SystemInfoWidget(BoxLayout):
     def pulse_start_clicked(self):
         if self.treadmill and hasattr(self.treadmill, 'pulse_start'):
             self.treadmill.pulse_start()
+
+    def toggle_auto_recovery_clicked(self):
+        if self.treadmill and hasattr(self.treadmill, 'toggle_modbus_auto_recovery'):
+            self.treadmill.toggle_modbus_auto_recovery()
+            self.update_info()
 
     def clear_log_clicked(self):
         if self.treadmill and hasattr(self.treadmill, 'clear_diagnostic_log'):
@@ -168,26 +182,63 @@ class SystemInfoWidget(BoxLayout):
         self.encoder_raw_text = f"{enc_mms} mm/s"
 
         cur_freq = modbus.get("belt_current_frequency")
-        self.freq_pv_text = f"{cur_freq:.2f} Hz" if cur_freq is not None else "-- Hz"
+        if cur_freq is not None:
+            val_hz = float(cur_freq)
+            if val_hz > 100.0:
+                val_hz = val_hz / 100.0
+            self.freq_pv_text = f"{val_hz:.2f} Hz"
+        else:
+            self.freq_pv_text = "-- Hz"
 
         m_master = modbus.get("Modbus_Master_Status", 0)
         if m_master == 0:
             self.modbus_master_text = "OK (0)"
             self.modbus_master_bg = [0.2, 0.5, 0.2, 1]
+        elif m_master == 17:
+            self.modbus_master_text = "PORT SÉRIE (17)"
+            self.modbus_master_bg = [0.85, 0.25, 0.1, 1]
         else:
             self.modbus_master_text = f"ERREUR ({m_master})"
             self.modbus_master_bg = [0.8, 0.2, 0.2, 1]
 
         m_act1 = modbus.get("Modbus_Action_Status_1", 0)
         if m_act1 == 0:
-            self.modbus_act1_text = "OK (0)"
+            self.modbus_act1_text = "0 (OK)"
             self.modbus_act1_bg = [0.2, 0.5, 0.2, 1]
+        elif m_act1 == 110:
+            self.modbus_act1_text = "110 (Timeout)"
+            self.modbus_act1_bg = [0.85, 0.45, 0.1, 1]
+        elif m_act1 == 17:
+            self.modbus_act1_text = "17 (Liaison occupée)"
+            self.modbus_act1_bg = [0.85, 0.25, 0.1, 1]
         else:
             self.modbus_act1_text = f"CODE {m_act1}"
             self.modbus_act1_bg = [0.8, 0.2, 0.2, 1]
 
         m_act2 = modbus.get("Modbus_Action_Status_2", 0)
-        self.modbus_act2_text = f"Code {m_act2}" if m_act2 is not None else "--"
+        if m_act2 == 0:
+            self.modbus_act2_text = "0 (OK)"
+        elif m_act2 == 110:
+            self.modbus_act2_text = "110 (Timeout)"
+        elif m_act2 == 17:
+            self.modbus_act2_text = "17 (Liaison occupée)"
+        elif m_act2 is not None:
+            self.modbus_act2_text = f"Code {m_act2}"
+        else:
+            self.modbus_act2_text = "--"
+
+        m_act3 = modbus.get("Modbus_Action_Status_3", None)
+        if m_act3 is None:
+            self.modbus_act3_text = "--"
+        elif m_act3 == 0:
+            self.modbus_act3_text = "0 (OK)"
+        else:
+            self.modbus_act3_text = f"Code {m_act3}"
+
+        auto_rec = controller.get("modbus_auto_recovery_enabled", True)
+        self.modbus_auto_recovery_active = bool(auto_rec)
+        self.modbus_auto_recovery_bg = [0.15, 0.6, 0.25, 1] if self.modbus_auto_recovery_active else [0.4, 0.4, 0.45, 1]
+        self.modbus_auto_reset_count_text = str(controller.get("modbus_auto_reset_count", 0))
 
         l_sp = modbus.get("lift_angle_SP", 0)
         self.lift_sp_text = f"{(l_sp / 100.0):.1f}° (reg: {l_sp})"
